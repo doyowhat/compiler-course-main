@@ -160,6 +160,8 @@ set(IR_SRCS
 	ir/Instructions/ArgInstruction.h
 	ir/Instructions/BinaryInstruction.cpp
 	ir/Instructions/BinaryInstruction.h
+	ir/Instructions/BranchInstruction.cpp
+	ir/Instructions/BranchInstruction.h
 	ir/Instructions/EntryInstruction.cpp
 	ir/Instructions/EntryInstruction.h
 	ir/Instructions/ExitInstruction.cpp
@@ -172,6 +174,8 @@ set(IR_SRCS
 	ir/Instructions/LabelInstruction.h
 	ir/Instructions/MoveInstruction.cpp
 	ir/Instructions/MoveInstruction.h
+	ir/Instructions/UnaryInstruction.cpp
+	ir/Instructions/UnaryInstruction.h
 	ir/Types/VoidType.h
 	ir/Types/VoidType.cpp
 	ir/Types/LabelType.h

@@ -43,11 +43,41 @@ public:
 
     virtual std::any visitExpressionStatement(MiniCParser::ExpressionStatementContext *context) = 0;
 
+    virtual std::any visitIfStatement(MiniCParser::IfStatementContext *context) = 0;
+
+    virtual std::any visitIfElseStatement(MiniCParser::IfElseStatementContext *context) = 0;
+
+    virtual std::any visitWhileStatement(MiniCParser::WhileStatementContext *context) = 0;
+
+    virtual std::any visitBreakStatement(MiniCParser::BreakStatementContext *context) = 0;
+
+    virtual std::any visitContinueStatement(MiniCParser::ContinueStatementContext *context) = 0;
+
     virtual std::any visitExpr(MiniCParser::ExprContext *context) = 0;
+
+    virtual std::any visitLogicalOrExp(MiniCParser::LogicalOrExpContext *context) = 0;
+
+    virtual std::any visitLogicalAndExp(MiniCParser::LogicalAndExpContext *context) = 0;
+
+    virtual std::any visitEqualityExp(MiniCParser::EqualityExpContext *context) = 0;
+
+    virtual std::any visitRelExp(MiniCParser::RelExpContext *context) = 0;
 
     virtual std::any visitAddExp(MiniCParser::AddExpContext *context) = 0;
 
+    virtual std::any visitMulExp(MiniCParser::MulExpContext *context) = 0;
+
+    virtual std::any visitLogicalOrOp(MiniCParser::LogicalOrOpContext *context) = 0;
+
+    virtual std::any visitLogicalAndOp(MiniCParser::LogicalAndOpContext *context) = 0;
+
+    virtual std::any visitEqualityOp(MiniCParser::EqualityOpContext *context) = 0;
+
+    virtual std::any visitRelOp(MiniCParser::RelOpContext *context) = 0;
+
     virtual std::any visitAddOp(MiniCParser::AddOpContext *context) = 0;
+
+    virtual std::any visitMulOp(MiniCParser::MulOpContext *context) = 0;
 
     virtual std::any visitUnaryExp(MiniCParser::UnaryExpContext *context) = 0;
 

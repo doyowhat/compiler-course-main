@@ -17,9 +17,10 @@
 #pragma once
 
 #include <unordered_map>
-
+#include <stack>
 #include "AST.h"
 #include "Module.h"
+#include "LabelInstruction.h"
 
 /// @brief AST遍历产生线性IR类
 class IRGenerator {
@@ -37,6 +38,7 @@ public:
     bool run();
 
 protected:
+    std::string generateLabel();
     /// @brief 编译单元AST节点翻译成线性中间IR
     /// @param node AST节点
     /// @return 翻译是否成功，true：成功，false：失败
@@ -62,6 +64,23 @@ protected:
     /// @return 翻译是否成功，true：成功，false：失败
     bool ir_block(ast_node * node);
 
+    bool ir_if(ast_node * node);
+    /// @brief 语句块中的whileAST节点翻译成线性中间IR
+    bool ir_while(ast_node * node);
+    bool ir_break(ast_node * node);
+    bool ir_continue(ast_node * node);
+
+    bool ir_and(ast_node * node);
+    bool ir_or(ast_node * node);
+    bool ir_not(ast_node * node);
+
+    bool ir_relop(ast_node * node, IRInstOperator op);
+    bool ir_eq(ast_node * node);
+    bool ir_ne(ast_node * node);
+    bool ir_lt(ast_node * node);
+    bool ir_le(ast_node * node);
+    bool ir_gt(ast_node * node);
+    bool ir_ge(ast_node * node);
     /// @brief 整数加法AST节点翻译成线性中间IR
     /// @param node AST节点
     /// @return 翻译是否成功，true：成功，false：失败
@@ -72,6 +91,25 @@ protected:
     /// @return 翻译是否成功，true：成功，false：失败
     bool ir_sub(ast_node * node);
 
+    /// @brief 整数乘法AST节点翻译成线性中间IR
+    /// @param node AST节点
+    /// @return 翻译是否成功，true：成功，false：失败
+    bool ir_mul(ast_node * node);
+
+    /// @brief 整数除法AST节点翻译成线性中间IR
+    /// @param node AST节点
+    /// @return 翻译是否成功，true：成功，false：失败
+    bool ir_div(ast_node * node);
+
+    /// @brief 整数取模AST节点翻译成线性中间IR
+    /// @param node AST节点
+    /// @return 翻译是否成功，true：成功，false：失败
+    bool ir_mod(ast_node * node);
+
+    /// @brief 整数取负AST节点翻译成线性中间IR
+    /// @param node AST节点
+    /// @return 翻译是否成功，true：成功，false：失败
+    bool ir_neg(ast_node * node);
     /// @brief 赋值AST节点翻译成线性中间IR
     /// @param node AST节点
     /// @return 翻译是否成功，true：成功，false：失败
@@ -134,4 +172,12 @@ private:
 
     /// @brief 符号表:模块
     Module * module;
+    // 在 IRGenerator.h 中
+    struct LoopContext {
+        LabelInstruction * loop_entry_label; // 循环入口标签
+        LabelInstruction * loop_body_label;  // 循环体入口标签
+        LabelInstruction * loop_exit_label;  // 循环出口标签
+    };
+
+    std::stack<LoopContext> loop_contexts; // 循环上下文栈
 };
