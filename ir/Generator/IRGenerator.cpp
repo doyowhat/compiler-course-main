@@ -585,10 +585,39 @@ bool IRGenerator::ir_not(ast_node * node)
     Function * currentFunc = module->getCurrentFunction();
     if (!currentFunc)
         return false;
-    // 交换真假出口标签
-    std::swap(node->true_label, node->false_label);
-    // 递归处理操作数
-    return ir_visit_ast_node(node->sons[0]);
+
+    // 创建真假标签
+    auto trueLabelInst = new LabelInstruction(currentFunc);  // 非运算结果为真时跳转
+    auto falseLabelInst = new LabelInstruction(currentFunc); // 非运算结果为假时跳转
+    auto endLabelInst = new LabelInstruction(currentFunc);   // 结束标签
+
+    node->true_label = trueLabelInst;
+    node->false_label = falseLabelInst;
+
+    // 计算操作数（子节点）
+    ast_node * operand = ir_visit_ast_node(node->sons[0]);
+    if (!operand)
+        return false;
+    node->blockInsts.addInst(operand->blockInsts);
+
+    // 条件：若操作数为真（非零），则跳转到假出口（取反后为假）
+    node->blockInsts.addInst(
+        new BranchInstruction(currentFunc, IRInstOperator::IRINST_OP_BT, operand->val, falseLabelInst));
+
+    // 真出口：操作数为假，取反后为真
+    node->blockInsts.addInst(trueLabelInst);
+    auto result = static_cast<Value *>(module->newVarValue(IntegerType::getTypeInt()));
+    node->blockInsts.addInst(new MoveInstruction(currentFunc, result, new ConstInt(1)));
+    node->blockInsts.addInst(new GotoInstruction(currentFunc, endLabelInst));
+
+    // 假出口：操作数为真，取反后为假
+    node->blockInsts.addInst(falseLabelInst);
+    node->blockInsts.addInst(new MoveInstruction(currentFunc, result, new ConstInt(0)));
+
+    // 结束标签
+    node->blockInsts.addInst(endLabelInst);
+    node->val = result;
+    return true;
 }
 
 // 等于（==）
