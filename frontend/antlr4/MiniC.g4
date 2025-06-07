@@ -14,7 +14,12 @@ grammar MiniC;
 compileUnit: (funcDef | varDecl)* EOF;
 
 // 函数定义
-funcDef: T_INT T_ID T_L_PAREN T_R_PAREN block;
+funcDef:
+	basicType T_ID T_L_PAREN formalParamList? T_R_PAREN block;
+
+// 形式参数列表
+formalParamList: formalParam (T_COMMA formalParam)*;
+formalParam: basicType T_ID;
 
 // 语句块
 block: T_L_BRACE blockItemList? T_R_BRACE;
@@ -29,13 +34,13 @@ blockItem: statement | varDecl;
 varDecl: basicType varDef (T_COMMA varDef)* T_SEMICOLON;
 
 // 基本类型
-basicType: T_INT;
+basicType: T_INT | T_VOID;
 
 // 变量定义
-varDef: T_ID;
+varDef: T_ID (T_ASSIGN expr)?; // 变量定义可以包含初始值
 
 statement:
-	T_RETURN expr T_SEMICOLON									# returnStatement
+	T_RETURN expr? T_SEMICOLON									# returnStatement
 	| lVal T_ASSIGN expr T_SEMICOLON							# assignStatement
 	| block														# blockStatement
 	| expr? T_SEMICOLON											# expressionStatement

@@ -76,25 +76,63 @@ std::any MiniCCSTVisitor::visitCompileUnit(MiniCParser::CompileUnitContext * ctx
 /// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitFuncDef(MiniCParser::FuncDefContext * ctx)
 {
-    // 识别的文法产生式：funcDef : T_INT T_ID T_L_PAREN T_R_PAREN block;
+    // 获取返回类型（通过basicType非终结符）
+    type_attr funcReturnType;
+    if (ctx->basicType()) {
+        // 调用已有的visitBasicType方法
+        funcReturnType = std::any_cast<type_attr>(visitBasicType(ctx->basicType()));
+    } else {
+        // 错误处理
+        return nullptr;
+    }
 
-    // 函数返回类型，终结符
-    type_attr funcReturnType{BasicType::TYPE_INT, (int64_t) ctx->T_INT()->getSymbol()->getLine()};
-
-    // 创建函数名的标识符终结符节点，终结符
+    // 函数名
     char * id = strdup(ctx->T_ID()->getText().c_str());
+    var_id_attr funcId{id, static_cast<int64_t>(ctx->T_ID()->getSymbol()->getLine())};
 
-    var_id_attr funcId{id, (int64_t) ctx->T_ID()->getSymbol()->getLine()};
-
-    // 形参结点目前没有，设置为空指针
+    // 形参列表
     ast_node * formalParamsNode = nullptr;
+    if (ctx->formalParamList()) {
+        formalParamsNode = std::any_cast<ast_node *>(visitFormalParamList(ctx->formalParamList()));
+    }
 
-    // 遍历block结点创建函数体节点，非终结符
+    // 函数体
     auto blockNode = std::any_cast<ast_node *>(visitBlock(ctx->block()));
 
-    // 创建函数定义的节点，孩子有类型，函数名，语句块和形参(实际上无)
-    // create_func_def函数内会释放funcId中指向的标识符空间，切记，之后不要再释放，之前一定要是通过strdup函数或者malloc分配的空间
+    // 创建函数定义节点
     return create_func_def(funcReturnType, funcId, blockNode, formalParamsNode);
+}
+
+/// @brief 非终结运算符formalParamList的遍历
+/// @param ctx CST上下文
+std::any MiniCCSTVisitor::visitFormalParamList(MiniCParser::FormalParamListContext * ctx)
+{
+    // 创建形参列表节点
+    auto paramsNode = create_contain_node(ast_operator_type::AST_OP_FUNC_FORMAL_PARAMS);
+
+    for (auto paramCtx: ctx->formalParam()) {
+        auto paramNode = std::any_cast<ast_node *>(visitFormalParam(paramCtx));
+        paramsNode->insert_son_node(paramNode);
+    }
+
+    return paramsNode;
+}
+
+/// @brief 非终结运算符formalParam的遍历
+/// @param ctx CST上下文
+std::any MiniCCSTVisitor::visitFormalParam(MiniCParser::FormalParamContext * ctx)
+{
+    // 形参类型
+    type_attr paramType = std::any_cast<type_attr>(visitBasicType(ctx->basicType()));
+    auto typeNode = create_type_node(paramType);
+
+    // 形参变量名
+    char * id = strdup(ctx->T_ID()->getText().c_str());
+    var_id_attr paramId{id, static_cast<int64_t>(ctx->T_ID()->getSymbol()->getLine())};
+    auto idNode = ast_node::New(paramId);
+
+    // 创建形参节点（AST_OP_VAR_DECL）
+    return ast_node::New(ast_operator_type::AST_OP_VAR_DECL, typeNode, idNode);
 }
 
 /// @brief 非终结运算符block的遍历
@@ -180,12 +218,10 @@ std::any MiniCCSTVisitor::visitBlockStatement(MiniCParser::BlockStatementContext
 ///
 std::any MiniCCSTVisitor::visitReturnStatement(MiniCParser::ReturnStatementContext * ctx)
 {
-    // 识别的文法产生式：returnStatement -> T_RETURN expr T_SEMICOLON
-
-    // 非终结符，表达式expr遍历
-    auto exprNode = std::any_cast<ast_node *>(visitExpr(ctx->expr()));
-
-    // 创建返回节点，其孩子为Expr
+    ast_node * exprNode = nullptr;
+    if (ctx->expr()) { // 检查expr是否存在
+        exprNode = std::any_cast<ast_node *>(visitExpr(ctx->expr()));
+    }
     return create_contain_node(ast_operator_type::AST_OP_RETURN, exprNode);
 }
 
@@ -559,33 +595,6 @@ std::any MiniCCSTVisitor::visitLVal(MiniCParser::LValContext * ctx)
     return ast_node::New(varId, lineNo);
 }
 
-std::any MiniCCSTVisitor::visitVarDecl(MiniCParser::VarDeclContext * ctx)
-{
-    // varDecl: basicType varDef (T_COMMA varDef)* T_SEMICOLON;
-
-    // 声明语句节点
-    ast_node * stmt_node = create_contain_node(ast_operator_type::AST_OP_DECL_STMT);
-
-    // 类型节点
-    type_attr typeAttr = std::any_cast<type_attr>(visitBasicType(ctx->basicType()));
-
-    for (auto & varCtx: ctx->varDef()) {
-        // 变量名节点
-        ast_node * id_node = std::any_cast<ast_node *>(visitVarDef(varCtx));
-
-        // 创建类型节点
-        ast_node * type_node = create_type_node(typeAttr);
-
-        // 创建变量定义节点
-        ast_node * decl_node = ast_node::New(ast_operator_type::AST_OP_VAR_DECL, type_node, id_node, nullptr);
-
-        // 插入到变量声明语句
-        (void) stmt_node->insert_son_node(decl_node);
-    }
-
-    return stmt_node;
-}
-
 std::any MiniCCSTVisitor::visitVarDef(MiniCParser::VarDefContext * ctx)
 {
     // varDef: T_ID;
@@ -595,7 +604,35 @@ std::any MiniCCSTVisitor::visitVarDef(MiniCParser::VarDefContext * ctx)
     // 获取行号
     int64_t lineNo = (int64_t) ctx->T_ID()->getSymbol()->getLine();
 
+    if (ctx->T_ASSIGN()) {
+        // 如果有赋值，则需要处理
+
+        auto exprNode = std::any_cast<ast_node *>(visitExpr(ctx->expr()));
+        //  创建赋值节点，左值为变量名，右值为表达式
+        return ast_node::New(ast_operator_type::AST_OP_ASSIGN, ast_node::New(varId, lineNo), exprNode, nullptr);
+    }
     return ast_node::New(varId, lineNo);
+}
+
+std::any MiniCCSTVisitor::visitVarDecl(MiniCParser::VarDeclContext * ctx)
+{
+
+    // 声明语句节点
+    ast_node * stmt_node = create_contain_node(ast_operator_type::AST_OP_DECL_STMT);
+
+    // 类型节点
+    type_attr typeAttr = std::any_cast<type_attr>(visitBasicType(ctx->basicType()));
+    for (auto & varCtx: ctx->varDef()) {
+        ast_node * id_node = std::any_cast<ast_node *>(visitVarDef(varCtx));
+        // 创建类型节点
+        ast_node * type_node = create_type_node(typeAttr);
+        // 创建变量定义节点
+        ast_node * decl_node = ast_node::New(ast_operator_type::AST_OP_VAR_DECL, type_node, id_node, nullptr);
+        // 插入到变量声明语句
+        (void) stmt_node->insert_son_node(decl_node);
+    }
+
+    return stmt_node;
 }
 
 std::any MiniCCSTVisitor::visitBasicType(MiniCParser::BasicTypeContext * ctx)
@@ -612,15 +649,11 @@ std::any MiniCCSTVisitor::visitBasicType(MiniCParser::BasicTypeContext * ctx)
 
 std::any MiniCCSTVisitor::visitRealParamList(MiniCParser::RealParamListContext * ctx)
 {
-    // 识别的文法产生式：realParamList : expr (T_COMMA expr)*;
-
     auto paramListNode = create_contain_node(ast_operator_type::AST_OP_FUNC_REAL_PARAMS);
 
-    for (auto paramCtx: ctx->expr()) {
-
-        auto paramNode = std::any_cast<ast_node *>(visitExpr(paramCtx));
-
-        paramListNode->insert_son_node(paramNode);
+    for (auto exprCtx: ctx->expr()) {
+        auto paramExpr = std::any_cast<ast_node *>(visitExpr(exprCtx));
+        paramListNode->insert_son_node(paramExpr);
     }
 
     return paramListNode;
