@@ -195,8 +195,7 @@ bool IRGenerator::ir_function_define(ast_node * node)
         // TODO 自行追加语义错误处理
         return false;
     }
-
-    // 当前函数设置有效，变更为当前的函数
+    //  当前函数设置有效，变更为当前的函数
     module->setCurrentFunction(newFunc);
 
     // 进入函数的作用域
@@ -230,7 +229,6 @@ bool IRGenerator::ir_function_define(ast_node * node)
     if (!type_node->type->isVoidType()) {
         retValue = static_cast<LocalVariable *>(module->newVarValue(type_node->type));
         newFunc->setReturnValue(retValue);
-
         // 仅当函数没有返回值表达式时初始化main返回值
         if (name_node->name == "main" && block_node->sons.empty()) {
             irCode.addInst(new MoveInstruction(newFunc, retValue, new ConstInt(0)));
@@ -294,20 +292,17 @@ bool IRGenerator::ir_function_formal_params(ast_node * node)
         std::string paramName = nameNode->name;
         Type * paramType = typeNode->type;
 
-        // 创建形参局部变量（与普通变量声明类似）
+        // 将形参添加到函数的形参列表
+        FormalParam * formalParam = new FormalParam(paramType, paramName);
+        currentFunc->addParam(formalParam);
+
+        // 创建形参局部变量
         LocalVariable * localVar = static_cast<LocalVariable *>(module->newVarValue(paramType, paramName));
         node->val = localVar;
 
-        // 创建实参临时变量（用于接收函数调用传递的值）
-        Value * argTemp = module->newVarValue(paramType, "arg_temp_" + paramName);
-
         // 生成赋值指令：实参临时变量 -> 形参局部变量
-        MoveInstruction * moveInst = new MoveInstruction(currentFunc, localVar, argTemp);
+        MoveInstruction * moveInst = new MoveInstruction(currentFunc, localVar, formalParam);
         currentFunc->getInterCode().addInst(moveInst);
-
-        // 关键：将形参添加到函数的形参列表
-        FormalParam * formalParam = new FormalParam(paramType, paramName);
-        currentFunc->addParam(formalParam);
     }
 
     return true;
@@ -789,7 +784,6 @@ bool IRGenerator::ir_sub(ast_node * node)
     node->blockInsts.addInst(left->blockInsts);
     node->blockInsts.addInst(right->blockInsts);
     node->blockInsts.addInst(subInst);
-
     node->val = subInst;
 
     return true;
@@ -956,8 +950,8 @@ bool IRGenerator::ir_return(ast_node * node)
         ir_visit_ast_node(exprNode);
         if (!exprNode)
             return false;
-
         // 将返回值赋给函数返回值变量
+        node->blockInsts.addInst(exprNode->blockInsts);
         node->blockInsts.addInst(new MoveInstruction(currentFunc, retValue, exprNode->val));
     }
 
