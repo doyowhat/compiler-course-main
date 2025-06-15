@@ -147,6 +147,24 @@ void Function::toString(std::string & str)
     str += "}\n";
 }
 
+/// @file Function.cpp
+void Function::addParam(FormalParam * param)
+{
+    if (param) {
+        params.push_back(param);
+    }
+}
+
+void Function::addParams(const std::vector<FormalParam *> & newParams)
+{
+    params.insert(params.end(), newParams.begin(), newParams.end());
+}
+
+void Function::clearParams()
+{
+    params.clear();
+}
+
 /// @brief 设置函数出口指令
 /// @param inst 出口Label指令
 void Function::setExitLabel(Instruction * inst)

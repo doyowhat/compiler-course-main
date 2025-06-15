@@ -165,6 +165,15 @@ public:
     ///
     void realArgCountInc();
 
+    /// @brief 添加单个形参
+    void addParam(FormalParam * param);
+
+    /// @brief 添加多个形参
+    void addParams(const std::vector<FormalParam *> & params);
+
+    /// @brief 清空形参列表
+    void clearParams();
+
     ///
     /// @brief 用于统计ARG指令个数的清零
     ///

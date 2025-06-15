@@ -16,7 +16,7 @@
 ///
 
 #include "VoidType.h"
-
+#include <iostream>
 #include "MoveInstruction.h"
 
 ///

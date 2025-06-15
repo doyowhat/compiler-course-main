@@ -18,7 +18,7 @@
 #include "BranchInstruction.h"
 #include "VoidType.h"
 #include "IntegerType.h"
-#include <iostream>
+
 // 单向条件跳转构造函数（bt/bf）
 BranchInstruction::BranchInstruction(Function * _func, IRInstOperator _op, Value * _condVar, Instruction * _Target)
     : Instruction(_func, _op, VoidType::getType()), condVar(_condVar), Target(_Target)
@@ -38,7 +38,6 @@ void BranchInstruction::toString(std::string & str)
         case IRInstOperator::IRINST_OP_BF:
             // bf condvar, label X
             str = "bf " + condVar->getIRName() + "," + Target->getIRName();
-            // std::cerr << str << std::endl;
             break;
         default:
             // 未知指令

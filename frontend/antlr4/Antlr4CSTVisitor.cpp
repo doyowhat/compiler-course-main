@@ -44,7 +44,7 @@ ast_node * MiniCCSTVisitor::run(MiniCParser::CompileUnitContext * root)
 std::any MiniCCSTVisitor::visitCompileUnit(MiniCParser::CompileUnitContext * ctx)
 {
     // compileUnit: (funcDef | varDecl)* EOF
-
+    //
     // 请注意这里必须先遍历全局变量后遍历函数。肯定可以确保全局变量先声明后使用的规则，但有些情况却不能检查出。
     // 事实上可能函数A后全局变量B后函数C，这时在函数A中是不能使用变量B的，需要报语义错误，但目前的处理不会。
     // 因此在进行语义检查时，可能追加检查行号和列号，如果函数的行号/列号在全局变量的行号/列号的前面则需要报语义错误
@@ -132,7 +132,7 @@ std::any MiniCCSTVisitor::visitFormalParam(MiniCParser::FormalParamContext * ctx
     auto idNode = ast_node::New(paramId);
 
     // 创建形参节点（AST_OP_VAR_DECL）
-    return ast_node::New(ast_operator_type::AST_OP_VAR_DECL, typeNode, idNode);
+    return ast_node::New(ast_operator_type::AST_OP_VAR_DECL, typeNode, idNode, nullptr);
 }
 
 /// @brief 非终结运算符block的遍历
@@ -287,7 +287,6 @@ std::any MiniCCSTVisitor::visitStatement(MiniCParser::StatementContext * ctx)
         // if语句（无else）
         auto condNode = std::any_cast<ast_node *>(visitExpr(ifCtx->expr()));
         auto thenStmt = std::any_cast<ast_node *>(visitStatement(ifCtx->statement()));
-        // std::cerr << "if created!" << std::endl;
         //  创建if节点（无else分支）
         return ast_node::New(ast_operator_type::AST_OP_IF, condNode, thenStmt, nullptr);
     } else if (auto ifElseCtx = dynamic_cast<MiniCParser::IfElseStatementContext *>(ctx)) {
@@ -295,7 +294,6 @@ std::any MiniCCSTVisitor::visitStatement(MiniCParser::StatementContext * ctx)
         auto condNode = std::any_cast<ast_node *>(visitExpr(ifElseCtx->expr()));
         auto thenStmt = std::any_cast<ast_node *>(visitStatement(ifElseCtx->statement(0)));
         auto elseStmt = std::any_cast<ast_node *>(visitStatement(ifElseCtx->statement(1)));
-        // std::cerr << "if-else created!" << std::endl;
         //  创建if-else节点
         return ast_node::New(ast_operator_type::AST_OP_IF, condNode, thenStmt, elseStmt, nullptr);
     } else if (auto whileCtx = dynamic_cast<MiniCParser::WhileStatementContext *>(ctx)) {
@@ -311,7 +309,6 @@ std::any MiniCCSTVisitor::visitStatement(MiniCParser::StatementContext * ctx)
         // continue语句
         return ast_node::New(ast_operator_type::AST_OP_CONTINUE, nullptr);
     }
-    // std::cerr << "Unknown statement type!" << std::endl;
     return nullptr;
 }
 

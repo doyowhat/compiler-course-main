@@ -93,7 +93,6 @@ Function * Module::newFunction(std::string name, Type * returnType, std::vector<
 
     // 设置参数
     tempFunc->getParams().assign(params.begin(), params.end());
-
     insertFunctionDirectly(tempFunc);
 
     return tempFunc;
