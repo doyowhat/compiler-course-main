@@ -13,6 +13,7 @@
 /// <tr><td>2024-09-29 <td>1.0     <td>zenglj  <td>新建
 /// </table>
 ///
+#include <iostream>
 #include "Module.h"
 
 #include "ScopeStack.h"
@@ -93,7 +94,6 @@ Function * Module::newFunction(std::string name, Type * returnType, std::vector<
 
     // 设置参数
     tempFunc->getParams().assign(params.begin(), params.end());
-
     insertFunctionDirectly(tempFunc);
 
     return tempFunc;

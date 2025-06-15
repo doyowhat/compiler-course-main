@@ -188,8 +188,7 @@ bool IRGenerator::ir_function_define(ast_node * node)
     ast_node * name_node = node->sons[1];
     ast_node * param_node = node->sons[2];
     ast_node * block_node = node->sons[3];
-
-    // 创建一个新的函数定义
+    //  创建一个新的函数定义
     Function * newFunc = module->newFunction(name_node->name, type_node->type);
     if (!newFunc) {
         // 新定义的函数已经存在，则失败返回。
@@ -229,11 +228,14 @@ bool IRGenerator::ir_function_define(ast_node * node)
     // 新建一个Value，用于保存函数的返回值，如果没有返回值可不用申请
     LocalVariable * retValue = nullptr;
     if (!type_node->type->isVoidType()) {
-
-        // 保存函数返回值变量到函数信息中，在return语句翻译时需要设置值到这个变量中
         retValue = static_cast<LocalVariable *>(module->newVarValue(type_node->type));
+        newFunc->setReturnValue(retValue);
+
+        // 仅当函数没有返回值表达式时初始化main返回值
+        if (name_node->name == "main" && block_node->sons.empty()) {
+            irCode.addInst(new MoveInstruction(newFunc, retValue, new ConstInt(0)));
+        }
     }
-    newFunc->setReturnValue(retValue);
 
     // 这里最好设置返回值变量的初值为0，以便在没有返回值时能够返回0
 
@@ -274,12 +276,39 @@ bool IRGenerator::ir_function_define(ast_node * node)
 /// @return 翻译是否成功，true：成功，false：失败
 bool IRGenerator::ir_function_formal_params(ast_node * node)
 {
-    // TODO 目前形参还不支持，直接返回true
-
+    Function * currentFunc = module->getCurrentFunction();
+    if (!currentFunc)
+        return false;
     // 每个形参变量都创建对应的临时变量，用于表达实参转递的值
     // 而真实的形参则创建函数内的局部变量。
     // 然后产生赋值指令，用于把表达实参值的临时变量拷贝到形参局部变量上。
     // 请注意这些指令要放在Entry指令后面，因此处理的先后上要注意。
+
+    // 为每个形参创建两个值：
+    // 1. 实参值临时变量（用于接收调用者传递的值）
+    // 2. 形参局部变量（函数内实际使用的变量）
+
+    for (auto & paramNode: node->sons) {
+        ast_node * typeNode = paramNode->sons[0];
+        ast_node * nameNode = paramNode->sons[1];
+        std::string paramName = nameNode->name;
+        Type * paramType = typeNode->type;
+
+        // 创建形参局部变量（与普通变量声明类似）
+        LocalVariable * localVar = static_cast<LocalVariable *>(module->newVarValue(paramType, paramName));
+        node->val = localVar;
+
+        // 创建实参临时变量（用于接收函数调用传递的值）
+        Value * argTemp = module->newVarValue(paramType, "arg_temp_" + paramName);
+
+        // 生成赋值指令：实参临时变量 -> 形参局部变量
+        MoveInstruction * moveInst = new MoveInstruction(currentFunc, localVar, argTemp);
+        currentFunc->getInterCode().addInst(moveInst);
+
+        // 关键：将形参添加到函数的形参列表
+        FormalParam * formalParam = new FormalParam(paramType, paramName);
+        currentFunc->addParam(formalParam);
+    }
 
     return true;
 }
@@ -915,46 +944,28 @@ bool IRGenerator::ir_assign(ast_node * node)
 /// @return 翻译是否成功，true：成功，false：失败
 bool IRGenerator::ir_return(ast_node * node)
 {
-    ast_node * right = nullptr;
-
-    // return语句可能没有没有表达式，也可能有，因此这里必须进行区分判断
-    if (!node->sons.empty()) {
-
-        ast_node * son_node = node->sons[0];
-
-        // 返回的表达式的指令保存在right节点中
-        right = ir_visit_ast_node(son_node);
-        if (!right) {
-
-            // 某个变量没有定值
-            return false;
-        }
-    }
-
-    // 这里只处理整型的数据，如需支持实数，则需要针对类型进行处理
     Function * currentFunc = module->getCurrentFunction();
+    if (!currentFunc)
+        return false;
 
-    // 返回值存在时则移动指令到node中
-    if (right) {
+    LocalVariable * retValue = currentFunc->getReturnValue();
 
-        // 创建临时变量保存IR的值，以及线性IR指令
-        node->blockInsts.addInst(right->blockInsts);
+    // 如果函数有返回值类型
+    if (retValue && !node->sons.empty()) {
+        ast_node * exprNode = node->sons[0];
+        ir_visit_ast_node(exprNode);
+        if (!exprNode)
+            return false;
 
-        // 返回值赋值到函数返回值变量上，然后跳转到函数的尾部
-        node->blockInsts.addInst(new MoveInstruction(currentFunc, currentFunc->getReturnValue(), right->val));
-
-        node->val = right->val;
-    } else {
-        // 没有返回值
-        node->val = nullptr;
+        // 将返回值赋给函数返回值变量
+        node->blockInsts.addInst(new MoveInstruction(currentFunc, retValue, exprNode->val));
     }
 
-    // 跳转到函数的尾部出口指令上
+    // 跳转到函数出口
     node->blockInsts.addInst(new GotoInstruction(currentFunc, currentFunc->getExitLabel()));
 
     return true;
 }
-
 /// @brief 类型叶子节点翻译成线性中间IR
 /// @param node AST节点
 /// @return 翻译是否成功，true：成功，false：失败
@@ -988,7 +999,6 @@ bool IRGenerator::ir_leaf_node_var_id(ast_node * node)
 bool IRGenerator::ir_leaf_node_uint(ast_node * node)
 {
     ConstInt * val;
-
     // 新建一个整数常量Value
     val = module->newConstInt((int32_t) node->integer_val);
 
@@ -1011,6 +1021,7 @@ bool IRGenerator::ir_declare_statment(ast_node * node)
         if (!result) {
             break;
         }
+        node->blockInsts.addInst(child->blockInsts);
     }
 
     return result;
@@ -1021,11 +1032,53 @@ bool IRGenerator::ir_declare_statment(ast_node * node)
 /// @return 翻译是否成功，true：成功，false：失败
 bool IRGenerator::ir_variable_declare(ast_node * node)
 {
-    // 共有两个孩子，第一个类型，第二个变量名
+    // 变量声明结构：
+    // 情况1：[类型节点, 变量名节点]
+    // 情况2：[类型节点, 赋值表达式节点(包含变量名和初始化值)]
 
-    // TODO 这里可强化类型等检查
+    ast_node * typeNode = node->sons[0];
+    ast_node * nameOrInitNode = node->sons[1];
+    std::string varName;
+    Type * varType = typeNode->type;
 
-    node->val = module->newVarValue(node->sons[0]->type, node->sons[1]->name);
+    LocalVariable * localVar = nullptr;
+
+    // 判断第二个节点是变量名还是赋值表达式
+    if (nameOrInitNode->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID) {
+        // 情况1：第二个节点是变量名
+        varName = nameOrInitNode->name;
+        localVar = static_cast<LocalVariable *>(module->newVarValue(varType, varName));
+        node->val = localVar;
+
+    } else if (nameOrInitNode->node_type == ast_operator_type::AST_OP_ASSIGN) {
+        // 情况2：第二个节点是赋值表达式
+        // 获取赋值表达式的左值(变量名)
+        ast_node * lvalNode = nameOrInitNode->sons[0];
+        if (lvalNode->node_type != ast_operator_type::AST_OP_LEAF_VAR_ID) {
+            minic_log(LOG_ERROR, "变量声明中的赋值表达式左值不是变量名");
+            return false;
+        }
+        varName = lvalNode->name;
+        localVar = static_cast<LocalVariable *>(module->newVarValue(varType, varName));
+        node->val = localVar;
+
+        // 处理赋值表达式的右值(初始化值)
+        ast_node * initNode = nameOrInitNode->sons[1];
+        ir_visit_ast_node(initNode);
+        if (!initNode->val) {
+            minic_log(LOG_ERROR, "变量初始化表达式求值失败");
+            return false;
+        }
+
+        // 生成赋值指令
+        MoveInstruction * moveInst = new MoveInstruction(module->getCurrentFunction(), localVar, initNode->val);
+        node->blockInsts.addInst(initNode->blockInsts);
+        node->blockInsts.addInst(moveInst);
+
+    } else {
+        minic_log(LOG_ERROR, "变量声明的第二个子节点类型不合法");
+        return false;
+    }
 
     return true;
 }

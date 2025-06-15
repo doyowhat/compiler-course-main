@@ -38,7 +38,6 @@ void BranchInstruction::toString(std::string & str)
         case IRInstOperator::IRINST_OP_BF:
             // bf condvar, label X
             str = "bf " + condVar->getIRName() + "," + Target->getIRName();
-            // std::cerr << str << std::endl;
             break;
         default:
             // 未知指令

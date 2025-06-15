@@ -287,7 +287,6 @@ std::any MiniCCSTVisitor::visitStatement(MiniCParser::StatementContext * ctx)
         // if语句（无else）
         auto condNode = std::any_cast<ast_node *>(visitExpr(ifCtx->expr()));
         auto thenStmt = std::any_cast<ast_node *>(visitStatement(ifCtx->statement()));
-        // std::cerr << "if created!" << std::endl;
         //  创建if节点（无else分支）
         return ast_node::New(ast_operator_type::AST_OP_IF, condNode, thenStmt, nullptr);
     } else if (auto ifElseCtx = dynamic_cast<MiniCParser::IfElseStatementContext *>(ctx)) {
@@ -295,7 +294,6 @@ std::any MiniCCSTVisitor::visitStatement(MiniCParser::StatementContext * ctx)
         auto condNode = std::any_cast<ast_node *>(visitExpr(ifElseCtx->expr()));
         auto thenStmt = std::any_cast<ast_node *>(visitStatement(ifElseCtx->statement(0)));
         auto elseStmt = std::any_cast<ast_node *>(visitStatement(ifElseCtx->statement(1)));
-        // std::cerr << "if-else created!" << std::endl;
         //  创建if-else节点
         return ast_node::New(ast_operator_type::AST_OP_IF, condNode, thenStmt, elseStmt, nullptr);
     } else if (auto whileCtx = dynamic_cast<MiniCParser::WhileStatementContext *>(ctx)) {
@@ -311,7 +309,6 @@ std::any MiniCCSTVisitor::visitStatement(MiniCParser::StatementContext * ctx)
         // continue语句
         return ast_node::New(ast_operator_type::AST_OP_CONTINUE, nullptr);
     }
-    // std::cerr << "Unknown statement type!" << std::endl;
     return nullptr;
 }
 
