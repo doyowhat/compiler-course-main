@@ -22,13 +22,14 @@ public:
   };
 
   enum {
-    RuleCompileUnit = 0, RuleFuncDef = 1, RuleBlock = 2, RuleBlockItemList = 3, 
-    RuleBlockItem = 4, RuleVarDecl = 5, RuleBasicType = 6, RuleVarDef = 7, 
-    RuleStatement = 8, RuleExpr = 9, RuleLogicalOrExp = 10, RuleLogicalAndExp = 11, 
-    RuleEqualityExp = 12, RuleRelExp = 13, RuleAddExp = 14, RuleMulExp = 15, 
-    RuleLogicalOrOp = 16, RuleLogicalAndOp = 17, RuleEqualityOp = 18, RuleRelOp = 19, 
-    RuleAddOp = 20, RuleMulOp = 21, RuleUnaryExp = 22, RulePrimaryExp = 23, 
-    RuleRealParamList = 24, RuleLVal = 25
+    RuleCompileUnit = 0, RuleFuncDef = 1, RuleFormalParamList = 2, RuleFormalParam = 3, 
+    RuleBlock = 4, RuleBlockItemList = 5, RuleBlockItem = 6, RuleVarDecl = 7, 
+    RuleBasicType = 8, RuleVarDef = 9, RuleStatement = 10, RuleExpr = 11, 
+    RuleLogicalOrExp = 12, RuleLogicalAndExp = 13, RuleEqualityExp = 14, 
+    RuleRelExp = 15, RuleAddExp = 16, RuleMulExp = 17, RuleLogicalOrOp = 18, 
+    RuleLogicalAndOp = 19, RuleEqualityOp = 20, RuleRelOp = 21, RuleAddOp = 22, 
+    RuleMulOp = 23, RuleUnaryExp = 24, RulePrimaryExp = 25, RuleRealParamList = 26, 
+    RuleLVal = 27
   };
 
   explicit MiniCParser(antlr4::TokenStream *input);
@@ -50,6 +51,8 @@ public:
 
   class CompileUnitContext;
   class FuncDefContext;
+  class FormalParamListContext;
+  class FormalParamContext;
   class BlockContext;
   class BlockItemListContext;
   class BlockItemContext;
@@ -96,11 +99,12 @@ public:
   public:
     FuncDefContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
-    antlr4::tree::TerminalNode *T_INT();
+    BasicTypeContext *basicType();
     antlr4::tree::TerminalNode *T_ID();
     antlr4::tree::TerminalNode *T_L_PAREN();
     antlr4::tree::TerminalNode *T_R_PAREN();
     BlockContext *block();
+    FormalParamListContext *formalParamList();
 
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
@@ -108,6 +112,36 @@ public:
   };
 
   FuncDefContext* funcDef();
+
+  class  FormalParamListContext : public antlr4::ParserRuleContext {
+  public:
+    FormalParamListContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    std::vector<FormalParamContext *> formalParam();
+    FormalParamContext* formalParam(size_t i);
+    std::vector<antlr4::tree::TerminalNode *> T_COMMA();
+    antlr4::tree::TerminalNode* T_COMMA(size_t i);
+
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  FormalParamListContext* formalParamList();
+
+  class  FormalParamContext : public antlr4::ParserRuleContext {
+  public:
+    FormalParamContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    BasicTypeContext *basicType();
+    antlr4::tree::TerminalNode *T_ID();
+
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  FormalParamContext* formalParam();
 
   class  BlockContext : public antlr4::ParserRuleContext {
   public:
@@ -175,6 +209,7 @@ public:
     BasicTypeContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
     antlr4::tree::TerminalNode *T_INT();
+    antlr4::tree::TerminalNode *T_VOID();
 
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
@@ -188,6 +223,8 @@ public:
     VarDefContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
     antlr4::tree::TerminalNode *T_ID();
+    antlr4::tree::TerminalNode *T_ASSIGN();
+    ExprContext *expr();
 
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
@@ -293,8 +330,8 @@ public:
     ReturnStatementContext(StatementContext *ctx);
 
     antlr4::tree::TerminalNode *T_RETURN();
-    ExprContext *expr();
     antlr4::tree::TerminalNode *T_SEMICOLON();
+    ExprContext *expr();
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
   };
