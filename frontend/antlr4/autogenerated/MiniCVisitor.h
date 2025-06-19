@@ -1,5 +1,5 @@
 
-// Generated from MiniC.g4 by ANTLR 4.12.0
+// Generated from /home/code/exp/compiler-course-main/frontend/antlr4/MiniC.g4 by ANTLR 4.12.0
 
 #pragma once
 
@@ -23,9 +23,13 @@ public:
 
     virtual std::any visitFuncDef(MiniCParser::FuncDefContext *context) = 0;
 
+    virtual std::any visitFuncReturnType(MiniCParser::FuncReturnTypeContext *context) = 0;
+
     virtual std::any visitFormalParamList(MiniCParser::FormalParamListContext *context) = 0;
 
     virtual std::any visitFormalParam(MiniCParser::FormalParamContext *context) = 0;
+
+    virtual std::any visitFormalArrayDim(MiniCParser::FormalArrayDimContext *context) = 0;
 
     virtual std::any visitBlock(MiniCParser::BlockContext *context) = 0;
 
@@ -35,9 +39,9 @@ public:
 
     virtual std::any visitVarDecl(MiniCParser::VarDeclContext *context) = 0;
 
-    virtual std::any visitBasicType(MiniCParser::BasicTypeContext *context) = 0;
-
     virtual std::any visitVarDef(MiniCParser::VarDefContext *context) = 0;
+
+    virtual std::any visitBasicType(MiniCParser::BasicTypeContext *context) = 0;
 
     virtual std::any visitReturnStatement(MiniCParser::ReturnStatementContext *context) = 0;
 

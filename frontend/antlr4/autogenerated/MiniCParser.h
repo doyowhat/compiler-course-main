@@ -1,5 +1,5 @@
 
-// Generated from MiniC.g4 by ANTLR 4.12.0
+// Generated from /home/code/exp/compiler-course-main/frontend/antlr4/MiniC.g4 by ANTLR 4.12.0
 
 #pragma once
 
@@ -12,24 +12,24 @@
 class  MiniCParser : public antlr4::Parser {
 public:
   enum {
-    LINE_COMMENT = 1, BLOCK_COMMENT = 2, T_L_PAREN = 3, T_R_PAREN = 4, T_SEMICOLON = 5, 
-    T_L_BRACE = 6, T_R_BRACE = 7, T_ASSIGN = 8, T_COMMA = 9, T_ADD = 10, 
-    T_SUB = 11, T_MUL = 12, T_DIV = 13, T_MOD = 14, T_LT = 15, T_GT = 16, 
-    T_LE = 17, T_GE = 18, T_EQ = 19, T_NE = 20, T_AND = 21, T_OR = 22, T_NOT = 23, 
-    T_IF = 24, T_ELSE = 25, T_WHILE = 26, T_BREAK = 27, T_CONTINUE = 28, 
-    T_TRUE = 29, T_FALSE = 30, T_RETURN = 31, T_INT = 32, T_VOID = 33, T_ID = 34, 
-    T_OCTAL = 35, T_HEX = 36, T_DIGIT = 37, WS = 38
+    T_ID = 1, T_L_PAREN = 2, T_R_PAREN = 3, T_VOID = 4, T_COMMA = 5, T_L_BRACKET = 6, 
+    T_DIGIT = 7, T_R_BRACKET = 8, T_L_BRACE = 9, T_R_BRACE = 10, T_SEMICOLON = 11, 
+    T_ASSIGN = 12, ArrayDim = 13, T_INT = 14, T_RETURN = 15, T_IF = 16, 
+    T_ELSE = 17, T_WHILE = 18, T_BREAK = 19, T_CONTINUE = 20, T_OR = 21, 
+    T_AND = 22, T_EQ = 23, T_NE = 24, T_LT = 25, T_GT = 26, T_LE = 27, T_GE = 28, 
+    T_ADD = 29, T_SUB = 30, T_MUL = 31, T_DIV = 32, T_MOD = 33, T_NOT = 34, 
+    T_OCTAL = 35, T_HEX = 36, T_TRUE = 37, T_FALSE = 38
   };
 
   enum {
-    RuleCompileUnit = 0, RuleFuncDef = 1, RuleFormalParamList = 2, RuleFormalParam = 3, 
-    RuleBlock = 4, RuleBlockItemList = 5, RuleBlockItem = 6, RuleVarDecl = 7, 
-    RuleBasicType = 8, RuleVarDef = 9, RuleStatement = 10, RuleExpr = 11, 
-    RuleLogicalOrExp = 12, RuleLogicalAndExp = 13, RuleEqualityExp = 14, 
-    RuleRelExp = 15, RuleAddExp = 16, RuleMulExp = 17, RuleLogicalOrOp = 18, 
-    RuleLogicalAndOp = 19, RuleEqualityOp = 20, RuleRelOp = 21, RuleAddOp = 22, 
-    RuleMulOp = 23, RuleUnaryExp = 24, RulePrimaryExp = 25, RuleRealParamList = 26, 
-    RuleLVal = 27
+    RuleCompileUnit = 0, RuleFuncDef = 1, RuleFuncReturnType = 2, RuleFormalParamList = 3, 
+    RuleFormalParam = 4, RuleFormalArrayDim = 5, RuleBlock = 6, RuleBlockItemList = 7, 
+    RuleBlockItem = 8, RuleVarDecl = 9, RuleVarDef = 10, RuleBasicType = 11, 
+    RuleStatement = 12, RuleExpr = 13, RuleLogicalOrExp = 14, RuleLogicalAndExp = 15, 
+    RuleEqualityExp = 16, RuleRelExp = 17, RuleAddExp = 18, RuleMulExp = 19, 
+    RuleLogicalOrOp = 20, RuleLogicalAndOp = 21, RuleEqualityOp = 22, RuleRelOp = 23, 
+    RuleAddOp = 24, RuleMulOp = 25, RuleUnaryExp = 26, RulePrimaryExp = 27, 
+    RuleRealParamList = 28, RuleLVal = 29
   };
 
   explicit MiniCParser(antlr4::TokenStream *input);
@@ -51,14 +51,16 @@ public:
 
   class CompileUnitContext;
   class FuncDefContext;
+  class FuncReturnTypeContext;
   class FormalParamListContext;
   class FormalParamContext;
+  class FormalArrayDimContext;
   class BlockContext;
   class BlockItemListContext;
   class BlockItemContext;
   class VarDeclContext;
-  class BasicTypeContext;
   class VarDefContext;
+  class BasicTypeContext;
   class StatementContext;
   class ExprContext;
   class LogicalOrExpContext;
@@ -99,7 +101,7 @@ public:
   public:
     FuncDefContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
-    BasicTypeContext *basicType();
+    FuncReturnTypeContext *funcReturnType();
     antlr4::tree::TerminalNode *T_ID();
     antlr4::tree::TerminalNode *T_L_PAREN();
     antlr4::tree::TerminalNode *T_R_PAREN();
@@ -112,6 +114,20 @@ public:
   };
 
   FuncDefContext* funcDef();
+
+  class  FuncReturnTypeContext : public antlr4::ParserRuleContext {
+  public:
+    FuncReturnTypeContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    antlr4::tree::TerminalNode *T_VOID();
+    BasicTypeContext *basicType();
+
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  FuncReturnTypeContext* funcReturnType();
 
   class  FormalParamListContext : public antlr4::ParserRuleContext {
   public:
@@ -135,6 +151,8 @@ public:
     virtual size_t getRuleIndex() const override;
     BasicTypeContext *basicType();
     antlr4::tree::TerminalNode *T_ID();
+    std::vector<FormalArrayDimContext *> formalArrayDim();
+    FormalArrayDimContext* formalArrayDim(size_t i);
 
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
@@ -142,6 +160,22 @@ public:
   };
 
   FormalParamContext* formalParam();
+
+  class  FormalArrayDimContext : public antlr4::ParserRuleContext {
+  public:
+    FormalArrayDimContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    antlr4::tree::TerminalNode *T_L_BRACKET();
+    antlr4::tree::TerminalNode *T_R_BRACKET();
+    antlr4::tree::TerminalNode *T_DIGIT();
+    antlr4::tree::TerminalNode *T_ID();
+
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  FormalArrayDimContext* formalArrayDim();
 
   class  BlockContext : public antlr4::ParserRuleContext {
   public:
@@ -204,20 +238,6 @@ public:
 
   VarDeclContext* varDecl();
 
-  class  BasicTypeContext : public antlr4::ParserRuleContext {
-  public:
-    BasicTypeContext(antlr4::ParserRuleContext *parent, size_t invokingState);
-    virtual size_t getRuleIndex() const override;
-    antlr4::tree::TerminalNode *T_INT();
-    antlr4::tree::TerminalNode *T_VOID();
-
-
-    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-   
-  };
-
-  BasicTypeContext* basicType();
-
   class  VarDefContext : public antlr4::ParserRuleContext {
   public:
     VarDefContext(antlr4::ParserRuleContext *parent, size_t invokingState);
@@ -225,6 +245,8 @@ public:
     antlr4::tree::TerminalNode *T_ID();
     antlr4::tree::TerminalNode *T_ASSIGN();
     ExprContext *expr();
+    std::vector<antlr4::tree::TerminalNode *> ArrayDim();
+    antlr4::tree::TerminalNode* ArrayDim(size_t i);
 
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
@@ -232,6 +254,19 @@ public:
   };
 
   VarDefContext* varDef();
+
+  class  BasicTypeContext : public antlr4::ParserRuleContext {
+  public:
+    BasicTypeContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    antlr4::tree::TerminalNode *T_INT();
+
+
+    virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+   
+  };
+
+  BasicTypeContext* basicType();
 
   class  StatementContext : public antlr4::ParserRuleContext {
   public:
@@ -607,6 +642,8 @@ public:
     LValContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
     antlr4::tree::TerminalNode *T_ID();
+    std::vector<antlr4::tree::TerminalNode *> ArrayDim();
+    antlr4::tree::TerminalNode* ArrayDim(size_t i);
 
 
     virtual std::any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
