@@ -13,13 +13,21 @@ grammar MiniC;
 // 源文件编译单元定义
 compileUnit: (funcDef | varDecl)* EOF;
 
+/*函数定义以及形式参数 */
 // 函数定义
-funcDef:
-	basicType T_ID T_L_PAREN formalParamList? T_R_PAREN block;
 
+funcDef:
+	funcReturnType T_ID T_L_PAREN formalParamList? T_R_PAREN block;
+
+funcReturnType: T_VOID | basicType;
 // 形式参数列表
 formalParamList: formalParam (T_COMMA formalParam)*;
-formalParam: basicType T_ID;
+// 形式参数
+formalParam: basicType T_ID (formalArrayDim)*;
+
+// 数组维度
+formalArrayDim: T_L_BRACKET (T_DIGIT | T_ID)? T_R_BRACKET;
+/*函数定义以及形式参数*/
 
 // 语句块
 block: T_L_BRACE blockItemList? T_R_BRACE;
@@ -33,11 +41,13 @@ blockItem: statement | varDecl;
 // 变量声明
 varDecl: basicType varDef (T_COMMA varDef)* T_SEMICOLON;
 
-// 基本类型
-basicType: T_INT | T_VOID;
-
+ArrayDim: T_L_BRACKET expr T_R_BRACKET;
 // 变量定义
-varDef: T_ID (T_ASSIGN expr)?; // 变量定义可以包含初始值
+varDef:
+	T_ID (T_ASSIGN expr)? // 变量定义可以包含初始值
+	| T_ID (ArrayDim)+; //数组变量定义，暂时不支持初始化
+
+basicType: T_INT;
 
 statement:
 	T_RETURN expr? T_SEMICOLON									# returnStatement
@@ -87,7 +97,7 @@ primaryExp:
 realParamList: expr (T_COMMA expr)*;
 
 // 左值表达式
-lVal: T_ID;
+lVal: T_ID (ArrayDim)*;
 LINE_COMMENT: '//' ~[\r\n]* -> skip;
 BLOCK_COMMENT: '/*' .*? '*/' -> skip;
 // 词法规则

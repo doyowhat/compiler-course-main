@@ -1,5 +1,5 @@
 
-// Generated from MiniC.g4 by ANTLR 4.12.0
+// Generated from /home/code/exp/compiler-course-main/frontend/antlr4/MiniC.g4 by ANTLR 4.12.0
 
 #pragma once
 
@@ -23,11 +23,19 @@ public:
     return visitChildren(ctx);
   }
 
+  virtual std::any visitFuncReturnType(MiniCParser::FuncReturnTypeContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
   virtual std::any visitFormalParamList(MiniCParser::FormalParamListContext *ctx) override {
     return visitChildren(ctx);
   }
 
   virtual std::any visitFormalParam(MiniCParser::FormalParamContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual std::any visitFormalArrayDim(MiniCParser::FormalArrayDimContext *ctx) override {
     return visitChildren(ctx);
   }
 
@@ -47,11 +55,11 @@ public:
     return visitChildren(ctx);
   }
 
-  virtual std::any visitBasicType(MiniCParser::BasicTypeContext *ctx) override {
+  virtual std::any visitVarDef(MiniCParser::VarDefContext *ctx) override {
     return visitChildren(ctx);
   }
 
-  virtual std::any visitVarDef(MiniCParser::VarDefContext *ctx) override {
+  virtual std::any visitBasicType(MiniCParser::BasicTypeContext *ctx) override {
     return visitChildren(ctx);
   }
 
