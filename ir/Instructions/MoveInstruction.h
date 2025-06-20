@@ -28,6 +28,10 @@ class Function;
 ///
 class MoveInstruction : public Instruction {
 
+private:
+    bool srcIsReference = false;
+    bool dstIsReference = false;
+
 public:
     ///
     /// @brief 构造函数
@@ -39,4 +43,13 @@ public:
 
     /// @brief 转换成字符串
     void toString(std::string & str) override;
+
+    void setSrcIsReference(bool isRef)
+    {
+        srcIsReference = isRef;
+    }
+    void setDstIsReference(bool isRef)
+    {
+        dstIsReference = isRef;
+    }
 };
