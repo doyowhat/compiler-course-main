@@ -1,5 +1,5 @@
 
-// Generated from /home/code/exp/compiler-course-main/frontend/antlr4/MiniC.g4 by ANTLR 4.12.0
+// Generated from MiniC.g4 by ANTLR 4.12.0
 
 #pragma once
 
@@ -38,6 +38,8 @@ public:
     virtual std::any visitBlockItem(MiniCParser::BlockItemContext *context) = 0;
 
     virtual std::any visitVarDecl(MiniCParser::VarDeclContext *context) = 0;
+
+    virtual std::any visitArrayDim(MiniCParser::ArrayDimContext *context) = 0;
 
     virtual std::any visitVarDef(MiniCParser::VarDefContext *context) = 0;
 

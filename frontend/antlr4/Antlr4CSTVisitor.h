@@ -167,4 +167,6 @@ protected:
     /// @return std::any AST的节点
     ///
     std::any visitExpressionStatement(MiniCParser::ExpressionStatementContext * context) override;
+    std::any visitFormalArrayDim(MiniCParser::FormalArrayDimContext * ctx) override;
+    std::any visitArrayDim(MiniCParser::ArrayDimContext * ctx) override;
 };
