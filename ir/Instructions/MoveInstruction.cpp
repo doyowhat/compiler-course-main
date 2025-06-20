@@ -38,6 +38,13 @@ void MoveInstruction::toString(std::string & str)
 {
 
     Value *dstVal = getOperand(0), *srcVal = getOperand(1);
-
-    str = dstVal->getIRName() + " = " + srcVal->getIRName();
+    if (dstIsReference)
+        str = "*" + dstVal->getIRName();
+    else
+        str = dstVal->getIRName();
+    str += " = ";
+    if (srcIsReference)
+        str += "*" + srcVal->getIRName();
+    else
+        str += srcVal->getIRName();
 }

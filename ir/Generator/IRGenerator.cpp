@@ -19,8 +19,9 @@
 #include <cstdio>
 #include <unordered_map>
 #include <vector>
-#include <iostream> 
+#include <iostream>
 
+#include "ArrayType.h"
 #include "AST.h"
 #include "Common.h"
 #include "Function.h"
@@ -91,6 +92,11 @@ IRGenerator::IRGenerator(ast_node * _root, Module * _module) : root(_root), modu
 
     /* 编译单元 */
     ast2ir_handlers[ast_operator_type::AST_OP_COMPILE_UNIT] = &IRGenerator::ir_compile_unit;
+
+    /*数组支持*/
+    ast2ir_handlers[ast_operator_type::AST_OP_ARRAY_DIMENSIONS] = &IRGenerator::ir_array_dimensions;
+    ast2ir_handlers[ast_operator_type::AST_OP_ARRAY_ACCESS] = &IRGenerator::ir_array_access;
+    ast2ir_handlers[ast_operator_type::AST_OP_UNSPECIFIED_DIM] = &IRGenerator::ir_unspecified_dim;
 }
 
 /// @brief 遍历抽象语法树产生线性IR，保存到IRCode中
@@ -292,6 +298,18 @@ bool IRGenerator::ir_function_formal_params(ast_node * node)
         std::string paramName = nameNode->name;
         Type * paramType = typeNode->type;
 
+        if (paramType && paramType->isArrayType()) {
+            ArrayType * arrayType = static_cast<ArrayType *>(paramType);
+
+            // 对于形式参数，数组的第一个维度设置为0
+            std::vector<int> dims = arrayType->getDimensions();
+            if (!dims.empty())
+                dims[0] = 0;
+
+            // 创建调整后的数组类型
+            ArrayType * adjustedType = new ArrayType(arrayType->getElementType(), dims);
+            paramType = adjustedType;
+        }
         // 将形参添加到函数的形参列表
         FormalParam * formalParam = new FormalParam(paramType, paramName);
         currentFunc->addParam(formalParam);
@@ -919,8 +937,14 @@ bool IRGenerator::ir_assign(ast_node * node)
     }
 
     // 这里只处理整型的数据，如需支持实数，则需要针对类型进行处理
+    MoveInstruction * movInst = new MoveInstruction(module->getCurrentFunction(),
+                                                    left->val,   // 目标地址
+                                                    right->val); // 源值
 
-    MoveInstruction * movInst = new MoveInstruction(module->getCurrentFunction(), left->val, right->val);
+    // 如果左侧是数组访问（需要解引用）
+    if (son1_node->node_type == ast_operator_type::AST_OP_ARRAY_ACCESS) {
+        movInst->setDstIsReference(true); // 目标操作数需要解引用 (*addr = value)
+    }
 
     // 创建临时变量保存IR的值，以及线性IR指令
     node->blockInsts.addInst(right->blockInsts);
@@ -1037,8 +1061,16 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
 
     LocalVariable * localVar = nullptr;
 
-    // 判断第二个节点是变量名还是赋值表达式
-    if (nameOrInitNode->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID) {
+    // 判断第二个节点是变量名还是赋值表达式还是数组
+    if (nameOrInitNode->node_type == ast_operator_type::AST_OP_ARRAY_DIMENSIONS) {
+        // 情况3：数组声明
+        if (!ir_array_dimensions(nameOrInitNode)) {
+            minic_log(LOG_ERROR, "数组声明翻译失败");
+            return false;
+        }
+        node->val = nameOrInitNode->val; // 将数组变量保存到节点值中
+
+    } else if (nameOrInitNode->node_type == ast_operator_type::AST_OP_LEAF_VAR_ID) {
         // 情况1：第二个节点是变量名
         varName = nameOrInitNode->name;
         localVar = static_cast<LocalVariable *>(module->newVarValue(varType, varName));
@@ -1074,5 +1106,193 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
         return false;
     }
 
+    return true;
+}
+
+/// @brief 数组声明节点翻译成线性中间IR
+/// @param node AST节点
+/// @return 翻译是否成功，true：成功，false：失败
+bool IRGenerator::ir_array_dimensions(ast_node * node)
+{
+    std::cerr << "开始处理数组声明节点" << std::endl;
+    // Function * currentFunc = module->getCurrentFunction();
+    //  if (!currentFunc)
+    //      return false;
+
+    // 数组声明节点结构:
+    // sons[0]: 变量名节点 (AST_OP_LEAF_VAR_ID)
+    // sons[1..n]: 维度表达式节点
+
+    // 获取基本类型（现在只支持int）
+    Type * baseType = IntegerType::getTypeInt();
+    std::cerr << "获取基本类型" << std::endl;
+    // 获取数组名称
+    ast_node * idNode = node->sons[0];
+    std::string arrayName = idNode->name;
+    int64_t lineno = idNode->line_no;
+    std::cerr << "Array name: " << arrayName << std::endl;
+    // 收集维度信息
+    std::vector<int> dimensions;
+    for (size_t i = 1; i < node->sons.size(); i++) {
+        ast_node * dimExpr = node->sons[i];
+
+        // 处理维度表达式
+        ast_node * result = ir_visit_ast_node(dimExpr);
+        if (!result || !result->val) {
+            minic_log(LOG_ERROR, "数组维度表达式无效 at line %ld", lineno);
+            return false;
+        }
+
+        // 维度必须是常量整数，暂时不实现报错
+        // if (!result->val->isConst()) {
+        //     minic_log(LOG_ERROR, "数组维度必须是常量表达式 at line %ld", lineno);
+        //     return false;
+        // }
+        dimensions.push_back(static_cast<ConstInt *>(result->val)->getVal());
+        node->blockInsts.addInst(result->blockInsts);
+    }
+    std::cerr << "维度信息收集完成，维度数量: " << dimensions.size() << std::endl;
+    // 创建数组类型
+    ArrayType * arrayType = new ArrayType(baseType, dimensions);
+
+    // 在符号表中创建数组变量
+    LocalVariable * arrayVar = static_cast<LocalVariable *>(module->newVarValue(arrayType, arrayName));
+    // arrayVar->setLineNo(lineno);
+
+    // 标记节点值为数组变量
+    node->val = arrayVar;
+    std::cerr << "创建数组成功，数组名称: " << arrayName << std::endl;
+    return true;
+}
+
+/// @brief 数组访问节点翻译成线性中间IR
+/// @param node AST节点
+/// @return 翻译是否成功，true：成功，false：失败
+bool IRGenerator::ir_array_access(ast_node * node)
+{
+    Function * currentFunc = module->getCurrentFunction();
+    if (!currentFunc)
+        return false;
+
+    // 数组访问节点结构:
+    // sons[0]: 数组变量节点
+    // sons[1..n]: 索引表达式节点
+
+    // 获取数组变量
+    ast_node * arrayNode = ir_visit_ast_node(node->sons[0]);
+    if (!arrayNode || !arrayNode->val) {
+        minic_log(LOG_ERROR, "无效的数组变量 at line %ld", node->line_no);
+        return false;
+    }
+
+    // 必须是数组类型
+    if (!arrayNode->val->getType()->isArrayType()) {
+        minic_log(LOG_ERROR, "非数组类型尝试数组访问 at line %ld", node->line_no);
+        return false;
+    }
+
+    ArrayType * arrayType = static_cast<ArrayType *>(arrayNode->val->getType());
+    const std::vector<int> & dims = arrayType->getDimensions();
+    int dimCount = dims.size();
+
+    // 检查索引数量是否匹配
+    if (node->sons.size() - 1 != dimCount) {
+        minic_log(LOG_ERROR, "数组访问的索引维度不匹配 at line %ld", node->line_no);
+        return false;
+    }
+
+    // 收集索引表达式
+    std::vector<Value *> indices;
+    for (size_t i = 1; i < node->sons.size(); i++) {
+        ast_node * indexExpr = node->sons[i];
+
+        // 处理索引表达式
+        ast_node * result = ir_visit_ast_node(indexExpr);
+        if (!result || !result->val) {
+            minic_log(LOG_ERROR, "无效的数组索引表达式 at line %ld", node->line_no);
+            return false;
+        }
+
+        indices.push_back(result->val);
+        node->blockInsts.addInst(result->blockInsts);
+    }
+
+    // 计算数组偏移量
+    Value * totalOffset = nullptr;
+    Value * baseAddr = arrayNode->val;
+
+    // 计算偏移量: offset = (i0 * d1 + i1) * d2 + i2 + ...
+    for (int i = 0; i < dimCount; i++) {
+        // 计算当前维度的偏移
+        if (totalOffset) {
+            // 乘以后续维度的大小
+            Value * dimSize = new ConstInt(dims[i]);
+            BinaryInstruction * mul = new BinaryInstruction(currentFunc,
+                                                            IRInstOperator::IRINST_OP_MUL_I,
+                                                            totalOffset,
+                                                            dimSize,
+                                                            IntegerType::getTypeInt());
+            node->blockInsts.addInst(mul);
+            totalOffset = mul;
+        }
+
+        // 加上当前索引
+        if (totalOffset) {
+            BinaryInstruction * add = new BinaryInstruction(currentFunc,
+                                                            IRInstOperator::IRINST_OP_ADD_I,
+                                                            totalOffset,
+                                                            indices[i],
+                                                            IntegerType::getTypeInt());
+            node->blockInsts.addInst(add);
+            totalOffset = add;
+        } else {
+            totalOffset = indices[i];
+        }
+    }
+
+    // 乘以元素大小 (通常为4字节)
+    Value * elementSize = new ConstInt(arrayType->getElementSize());
+    BinaryInstruction * byteOffset = new BinaryInstruction(currentFunc,
+                                                           IRInstOperator::IRINST_OP_MUL_I,
+                                                           totalOffset,
+                                                           elementSize,
+                                                           IntegerType::getTypeInt());
+    node->blockInsts.addInst(byteOffset);
+
+    // 计算元素地址: addr = baseAddr + byteOffset
+    BinaryInstruction * elementAddr = new BinaryInstruction(currentFunc,
+                                                            IRInstOperator::IRINST_OP_ADD_I,
+                                                            baseAddr,
+                                                            byteOffset,
+                                                            IntegerType::getTypeInt());
+    node->blockInsts.addInst(elementAddr);
+
+    // 计算元素地址: addr = baseAddr + byteOffset
+    // 直接使用二元指令结果作为地址（不单独存储）
+    node->val = elementAddr;
+
+    // 创建临时变量存储加载的值
+    LocalVariable * tempValue = static_cast<LocalVariable *>(module->newVarValue(arrayType->getElementType()));
+
+    // 创建加载指令：tempValue = *elementAddr;
+    MoveInstruction * loadInst = new MoveInstruction(currentFunc, tempValue, elementAddr);
+    loadInst->setSrcIsReference(true); // 源操作数需要解引用
+    node->blockInsts.addInst(loadInst);
+
+    // 设置节点值为加载的值
+    node->val = tempValue;
+
+    return true;
+}
+
+/// @brief 未指定维度节点翻译成线性中间IR
+/// @param node AST节点
+/// @return 翻译是否成功，true：成功，false：失败
+bool IRGenerator::ir_unspecified_dim(ast_node * node)
+{
+    // 未指定维度，这种情况应该只出现在形式参数中
+    // 我们创建一个值为0的常量整数表示未指定维度
+    Value * zeroValue = module->newConstInt(0);
+    node->val = zeroValue;
     return true;
 }

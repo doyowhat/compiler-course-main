@@ -16,6 +16,8 @@
 ///
 #pragma once
 
+#include <iostream>
+#include <string>
 #include "GlobalValue.h"
 #include "IRConstant.h"
 
@@ -89,7 +91,17 @@ public:
     ///
     void toDeclareString(std::string & str)
     {
-        str = "declare " + getType()->toString() + " " + getIRName();
+        if (getType()->toString().find('[') != std::string::npos) {
+            std::string sstr = getType()->toString(), strType, strDim;
+            //截取第一个[后面的字符串
+            size_t pos = sstr.find('[');
+            if (pos != std::string::npos) {
+                strType = sstr.substr(0, pos);
+                strDim = sstr.substr(pos);
+            }
+            str = "declare " + strType + " " + getIRName() + strDim;
+        } else
+            str = "declare " + getType()->toString() + " " + getIRName();
     }
 
 private:

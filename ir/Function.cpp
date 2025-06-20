@@ -16,7 +16,7 @@
 
 #include <cstdlib>
 #include <string>
-
+#include <iostream>
 #include "IRConstant.h"
 #include "Function.h"
 
@@ -104,7 +104,18 @@ void Function::toString(std::string & str)
     for (auto & var: this->varsVector) {
 
         // 局部变量和临时变量需要输出declare语句
-        str += "\tdeclare " + var->getType()->toString() + " " + var->getIRName();
+        if (var->getType()->toString().find('[') != std::string::npos) {
+            std::string sstr = var->getType()->toString(), strType, strDim;
+            //截取第一个[后面的字符串
+            size_t pos = sstr.find('[');
+            if (pos != std::string::npos) {
+                strType = sstr.substr(0, pos);
+                strDim = sstr.substr(pos);
+            }
+            str += "\tdeclare " + strType + " " + var->getIRName() + strDim;
+        } else {
+            str += "\tdeclare " + var->getType()->toString() + " " + var->getIRName();
+        }
 
         std::string extraStr;
         std::string realName = var->getName();

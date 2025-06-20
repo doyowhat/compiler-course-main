@@ -150,6 +150,10 @@ protected:
     /// @return 翻译是否成功，true：成功，false：失败
     bool ir_variable_declare(ast_node * node);
 
+    bool ir_array_dimensions(ast_node * node);
+    bool ir_array_access(ast_node * node);
+    bool ir_unspecified_dim(ast_node * node);
+
     /// @brief 未知节点类型的节点处理
     /// @param node AST节点
     /// @return 翻译是否成功，true：成功，false：失败
