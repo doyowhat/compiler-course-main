@@ -41,11 +41,11 @@ blockItem: statement | varDecl;
 // 变量声明
 varDecl: basicType varDef (T_COMMA varDef)* T_SEMICOLON;
 
-ArrayDim: T_L_BRACKET expr T_R_BRACKET;
+arrayDim: T_L_BRACKET expr T_R_BRACKET;
 // 变量定义
 varDef:
 	T_ID (T_ASSIGN expr)? // 变量定义可以包含初始值
-	| T_ID (ArrayDim)+; //数组变量定义，暂时不支持初始化
+	| T_ID (arrayDim)+; //数组变量定义，暂时不支持初始化
 
 basicType: T_INT;
 
@@ -97,7 +97,7 @@ primaryExp:
 realParamList: expr (T_COMMA expr)*;
 
 // 左值表达式
-lVal: T_ID (ArrayDim)*;
+lVal: T_ID (arrayDim)*;
 LINE_COMMENT: '//' ~[\r\n]* -> skip;
 BLOCK_COMMENT: '/*' .*? '*/' -> skip;
 // 词法规则
@@ -106,7 +106,8 @@ T_R_PAREN: ')';
 T_SEMICOLON: ';';
 T_L_BRACE: '{';
 T_R_BRACE: '}';
-
+T_L_BRACKET: '[';
+T_R_BRACKET: ']';
 T_ASSIGN: '=';
 T_COMMA: ',';
 

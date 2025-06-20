@@ -1,5 +1,5 @@
 
-// Generated from /home/code/exp/compiler-course-main/frontend/antlr4/MiniC.g4 by ANTLR 4.12.0
+// Generated from MiniC.g4 by ANTLR 4.12.0
 
 #pragma once
 
@@ -52,6 +52,10 @@ public:
   }
 
   virtual std::any visitVarDecl(MiniCParser::VarDeclContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual std::any visitArrayDim(MiniCParser::ArrayDimContext *ctx) override {
     return visitChildren(ctx);
   }
 

@@ -118,11 +118,9 @@ enum class ast_operator_type : int {
     /// @brief 最大标识符，表示非法运算符
     AST_OP_MAX,
 
-    AST_OP_FORMAL_PARAM,     // 形式参数节点
     AST_OP_ARRAY_DIMENSIONS, // 数组维度列表
     AST_OP_UNSPECIFIED_DIM,  // 未指定的数组维度
-    AST_OP_VAR_DEF,          // 变量定义
-    AST_OP_ARRAY_ACCESS
+    AST_OP_ARRAY_ACCESS      //数组访问运算符
 };
 
 ///

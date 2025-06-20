@@ -1,5 +1,5 @@
 
-// Generated from /home/code/exp/compiler-course-main/frontend/antlr4/MiniC.g4 by ANTLR 4.12.0
+// Generated from MiniC.g4 by ANTLR 4.12.0
 
 #pragma once
 
@@ -13,12 +13,12 @@ class  MiniCLexer : public antlr4::Lexer {
 public:
   enum {
     LINE_COMMENT = 1, BLOCK_COMMENT = 2, T_L_PAREN = 3, T_R_PAREN = 4, T_SEMICOLON = 5, 
-    T_L_BRACE = 6, T_R_BRACE = 7, T_ASSIGN = 8, T_COMMA = 9, T_ADD = 10, 
-    T_SUB = 11, T_MUL = 12, T_DIV = 13, T_MOD = 14, T_LT = 15, T_GT = 16, 
-    T_LE = 17, T_GE = 18, T_EQ = 19, T_NE = 20, T_AND = 21, T_OR = 22, T_NOT = 23, 
-    T_IF = 24, T_ELSE = 25, T_WHILE = 26, T_BREAK = 27, T_CONTINUE = 28, 
-    T_TRUE = 29, T_FALSE = 30, T_RETURN = 31, T_INT = 32, T_VOID = 33, T_ID = 34, 
-    T_OCTAL = 35, T_HEX = 36, T_DIGIT = 37, WS = 38
+    T_L_BRACE = 6, T_R_BRACE = 7, T_L_BRACKET = 8, T_R_BRACKET = 9, T_ASSIGN = 10, 
+    T_COMMA = 11, T_ADD = 12, T_SUB = 13, T_MUL = 14, T_DIV = 15, T_MOD = 16, 
+    T_LT = 17, T_GT = 18, T_LE = 19, T_GE = 20, T_EQ = 21, T_NE = 22, T_AND = 23, 
+    T_OR = 24, T_NOT = 25, T_IF = 26, T_ELSE = 27, T_WHILE = 28, T_BREAK = 29, 
+    T_CONTINUE = 30, T_TRUE = 31, T_FALSE = 32, T_RETURN = 33, T_INT = 34, 
+    T_VOID = 35, T_ID = 36, T_OCTAL = 37, T_HEX = 38, T_DIGIT = 39, WS = 40
   };
 
   explicit MiniCLexer(antlr4::CharStream *input);

@@ -76,24 +76,40 @@ std::any MiniCCSTVisitor::visitCompileUnit(MiniCParser::CompileUnitContext * ctx
 /// @param ctx CST上下文
 std::any MiniCCSTVisitor::visitFuncDef(MiniCParser::FuncDefContext * ctx)
 {
-    // 获取返回类型（通过basicType非终结符）
+    // 获取返回类型节点
+    if (ctx->funcReturnType() == nullptr) {
+        std::cerr << "获取返回类型节点错误！" << std::endl;
+        return nullptr; // 错误处理
+    }
+    auto funcReturnCtx = ctx->funcReturnType();
+
+    // 处理返回类型
     type_attr funcReturnType;
-    if (ctx->basicType()) {
-        // 调用已有的visitBasicType方法
-        funcReturnType = std::any_cast<type_attr>(visitBasicType(ctx->basicType()));
+    if (funcReturnCtx->T_VOID()) {
+        // void返回类型
+        funcReturnType.type = BasicType::TYPE_VOID;
+        funcReturnType.lineno = static_cast<int64_t>(funcReturnCtx->T_VOID()->getSymbol()->getLine());
+    } else if (funcReturnCtx->basicType()) {
+        // 基本类型返回类型
+        funcReturnType = std::any_cast<type_attr>(visitBasicType(funcReturnCtx->basicType()));
     } else {
         // 错误处理
-        return nullptr;
+        funcReturnType.type = BasicType::TYPE_INT;
+        funcReturnType.lineno = -1;
     }
-
     // 函数名
-    char * id = strdup(ctx->T_ID()->getText().c_str());
-    var_id_attr funcId{id, static_cast<int64_t>(ctx->T_ID()->getSymbol()->getLine())};
+    auto idToken = ctx->T_ID();
+    std::string idText = idToken->getText();
+    char * id = strdup(idText.c_str());
+    var_id_attr funcId{id, static_cast<int64_t>(idToken->getSymbol()->getLine())};
 
     // 形参列表
     ast_node * formalParamsNode = nullptr;
-    if (ctx->formalParamList()) {
-        formalParamsNode = std::any_cast<ast_node *>(visitFormalParamList(ctx->formalParamList()));
+    if (auto paramList = ctx->formalParamList()) {
+        formalParamsNode = std::any_cast<ast_node *>(visitFormalParamList(paramList));
+    } else {
+        // 没有参数时创建空形参节点
+        formalParamsNode = create_contain_node(ast_operator_type::AST_OP_FUNC_FORMAL_PARAMS);
     }
 
     // 函数体
@@ -144,7 +160,7 @@ std::any MiniCCSTVisitor::visitFormalParam(MiniCParser::FormalParamContext * ctx
     }
 
     // 创建参数节点
-    ast_node * paramNode = ast_node::New(ast_operator_type::AST_OP_FORMAL_PARAM);
+    ast_node * paramNode = ast_node::New(ast_operator_type::AST_OP_FUNC_FORMAL_PARAM, nullptr);
     paramNode->insert_son_node(typeNode);
     paramNode->insert_son_node(idNode);
     if (arrayDims) {
@@ -159,7 +175,7 @@ std::any MiniCCSTVisitor::visitFormalArrayDim(MiniCParser::FormalArrayDimContext
     // formalArrayDim: T_L_BRACKET (T_DIGIT | T_ID)? T_R_BRACKET;
     //不指定大小的节点
     if (!ctx->T_DIGIT() && !ctx->T_ID()) {
-        return ast_node::New(ast_operator_type::AST_OP_UNSPECIFIED_DIM); // TODO:这里可能最后一个参数要是nullptr
+        return ast_node::New(ast_operator_type::AST_OP_UNSPECIFIED_DIM, nullptr);
     }
 
     if (ctx->T_DIGIT()) {
@@ -628,28 +644,56 @@ std::any MiniCCSTVisitor::visitLVal(MiniCParser::LValContext * ctx)
 {
     // 基本变量访问
     ast_node * base = ast_node::New(ctx->T_ID()->getText(), ctx->T_ID()->getSymbol()->getLine());
+    // 检查是否有数组访问
+    if (ctx->arrayDim().empty()) {
+        // 如果没有数组访问，直接返回基本变量节点
+        return base;
+    }
+    // 创建多维数组访问节点
+    ast_node * access = ast_node::New(ast_operator_type::AST_OP_ARRAY_ACCESS, nullptr);
 
-    // 处理数组访问
-    for (auto dimRule: ctx->ArrayDim()) {
-        auto index = std::any_cast<ast_node *>(visitArrayDim(dimRule));
+    // 第一个子节点是数组名或基本变量
+    access->insert_son_node(base);
 
-        ast_node * access = ast_node::New(ast_operator_type::AST_OP_ARRAY_ACCESS);
-        access->insert_son_node(base);
+    // 添加所有维度作为后续子节点
+    for (auto dim: ctx->arrayDim()) {
+        auto index = std::any_cast<ast_node *>(visitArrayDim(dim));
         access->insert_son_node(index);
-        base = access;
     }
 
-    return base;
+    return access;
+}
+
+std::any MiniCCSTVisitor::visitArrayDim(MiniCParser::ArrayDimContext * ctx)
+{
+    try {
+        // 创建维度节点
+        ast_node * dimNode = nullptr;
+        // 访问表达式并作为子节点
+        std::any exprResult = visitExpr(ctx->expr());
+        if (exprResult.has_value() && exprResult.type() == typeid(ast_node *)) {
+            ast_node * exprNode = std::any_cast<ast_node *>(exprResult);
+            dimNode = exprNode;
+        }
+        // else {
+        //     // 创建一个默认常量维度值
+        //     ast_node * defaultNode = ast_node::New(digit_int_attr{0,
+        //     static_cast<int64_t>(ctx->getStart()->getLine())}); dimNode->insert_son_node(defaultNode);
+        // }
+        return dimNode;
+    } catch (const std::exception & e) {
+        std::cerr << "Error in visitArrayDim: " << e.what() << std::endl;
+        return nullptr;
+    }
 }
 
 std::any MiniCCSTVisitor::visitVarDef(MiniCParser::VarDefContext * ctx)
 {
     // 变量名
     auto idNode = ast_node::New(ctx->T_ID()->getText(), ctx->T_ID()->getSymbol()->getLine());
-
     // 处理数组维度
     ast_node * arrayDims = nullptr;
-    for (auto dimRule: ctx->ArrayDim()) {
+    for (auto dimRule: ctx->arrayDim()) {
         auto dimNode = std::any_cast<ast_node *>(visitArrayDim(dimRule));
 
         if (!arrayDims) {
@@ -665,7 +709,7 @@ std::any MiniCCSTVisitor::visitVarDef(MiniCParser::VarDefContext * ctx)
     }
 
     // 创建变量定义节点
-    ast_node * varDefNode = ast_node::New(ast_operator_type::AST_OP_VAR_DEF);
+    ast_node * varDefNode = ast_node::New(ast_operator_type::AST_OP_VAR_DECL, nullptr);
     varDefNode->insert_son_node(idNode);
     if (arrayDims) {
         varDefNode->insert_son_node(arrayDims);
