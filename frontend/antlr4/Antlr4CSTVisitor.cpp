@@ -689,18 +689,11 @@ std::any MiniCCSTVisitor::visitArrayDim(MiniCParser::ArrayDimContext * ctx)
 
 std::any MiniCCSTVisitor::visitVarDef(MiniCParser::VarDefContext * ctx)
 {
-    // 变量名
-    auto idNode = ast_node::New(ctx->T_ID()->getText(), ctx->T_ID()->getSymbol()->getLine());
-    // 处理数组维度
-    ast_node * arrayDims = nullptr;
-    for (auto dimRule: ctx->arrayDim()) {
-        auto dimNode = std::any_cast<ast_node *>(visitArrayDim(dimRule));
 
-        if (!arrayDims) {
-            arrayDims = create_contain_node(ast_operator_type::AST_OP_ARRAY_DIMENSIONS);
-        }
-        arrayDims->insert_son_node(dimNode);
-    }
+    // 变量名
+    auto varId = ctx->T_ID()->getText();
+    auto lineNo = (int64_t) ctx->T_ID()->getSymbol()->getLine();
+    auto idNode = ast_node::New(ctx->T_ID()->getText(), ctx->T_ID()->getSymbol()->getLine());
 
     // 初始化表达式
     ast_node * initExpr = nullptr;
@@ -711,14 +704,18 @@ std::any MiniCCSTVisitor::visitVarDef(MiniCParser::VarDefContext * ctx)
     // 创建变量定义节点
     ast_node * varDefNode = ast_node::New(ast_operator_type::AST_OP_VAR_DECL, nullptr);
     varDefNode->insert_son_node(idNode);
-    if (arrayDims) {
-        varDefNode->insert_son_node(arrayDims);
+    if (!(ctx->arrayDim().empty())) {
+        varDefNode = create_contain_node(ast_operator_type::AST_OP_ARRAY_DIMENSIONS);
+        varDefNode->insert_son_node(ast_node::New(varId, lineNo));
+        for (auto dimRule: ctx->arrayDim()) {
+            auto dimNode = std::any_cast<ast_node *>(visitArrayDim(dimRule));
+            varDefNode->insert_son_node(dimNode);
+        }
+        return varDefNode;
+    } else if (initExpr) {
+        return ast_node::New(ast_operator_type::AST_OP_ASSIGN, ast_node::New(varId, lineNo), initExpr, nullptr);
     }
-    if (initExpr) {
-        varDefNode->insert_son_node(initExpr);
-    }
-
-    return varDefNode;
+    return ast_node::New(varId, lineNo);
 }
 
 std::any MiniCCSTVisitor::visitVarDecl(MiniCParser::VarDeclContext * ctx)
