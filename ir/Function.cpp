@@ -90,8 +90,20 @@ void Function::toString(std::string & str)
         } else {
             str += ", ";
         }
-
-        std::string param_str = param->getType()->toString() + param->getIRName();
+        //对于数组这里需要修改
+        std::string param_str;
+        if (param->getType()->isArrayType()) {
+            std::string sstr = param->getType()->toString(), strType, strDim;
+            //截取第一个[后面的字符串
+            size_t pos = sstr.find('[');
+            if (pos != std::string::npos) {
+                strType = sstr.substr(0, pos);
+                strDim = sstr.substr(pos);
+            }
+            param_str = strType + ' ' + param->getIRName() + strDim;
+        } else {
+            param_str = param->getType()->toString() + ' ' + param->getIRName();
+        }
 
         str += param_str;
     }
@@ -163,6 +175,7 @@ void Function::addParam(FormalParam * param)
 {
     if (param) {
         params.push_back(param);
+        return;
     }
 }
 
