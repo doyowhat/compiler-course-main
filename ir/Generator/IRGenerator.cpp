@@ -287,16 +287,12 @@ bool IRGenerator::ir_function_formal_params(ast_node * node)
     if (!currentFunc)
         return false;
 
-    std::cerr << "开始处理函数形式参数" << std::endl;
-
     for (auto & paramNode: node->sons) {
         // 获取参数类型和名称
         ast_node * typeNode = paramNode->sons[0];
         ast_node * nameNode = paramNode->sons[1];
         std::string paramName = nameNode->name;
         Type * paramType = typeNode->type;
-
-        std::cerr << "处理形参：" << paramName << " 基本类型：" << paramType->toString() << std::endl;
 
         // 检查是否是数组参数 (有第三个儿子)
         if (paramNode->sons.size() > 2) {
@@ -306,16 +302,12 @@ bool IRGenerator::ir_function_formal_params(ast_node * node)
                 minic_log(LOG_ERROR, "参数'%s'的维度信息无效", paramName.c_str());
                 return false;
             }
-
-            std::cerr << "检测到数组形参，维度数量：" << dimensionsNode->sons.size() << std::endl;
-
             // 收集维度信息
             std::vector<int> dimensions;
             for (auto dim: dimensionsNode->sons) {
                 if (dim->node_type == ast_operator_type::AST_OP_UNSPECIFIED_DIM) {
                     // 未指定维度，设为0
                     dimensions.push_back(0);
-                    std::cerr << "  未指定维度" << std::endl;
                 } else {
                     // 处理维度表达式
                     ast_node * result = ir_visit_ast_node(dim);
@@ -329,7 +321,6 @@ bool IRGenerator::ir_function_formal_params(ast_node * node)
                         ConstInt * constInt = dynamic_cast<ConstInt *>(result->val);
                         if (constInt) {
                             dimensions.push_back(constInt->getVal());
-                            std::cerr << "  维度值: " << constInt->getVal() << std::endl;
                         } else {
                             minic_log(LOG_ERROR, "数组维度必须是常量整数 for param '%s'", paramName.c_str());
                             return false;
@@ -349,8 +340,6 @@ bool IRGenerator::ir_function_formal_params(ast_node * node)
             if (!dimensions.empty()) {
                 dimensions[0] = 0;
             }
-
-            std::cerr << "创建数组形参类型: " << arrayType->toString() << std::endl;
         }
 
         // 将形参添加到函数的形参列表
@@ -1164,7 +1153,6 @@ bool IRGenerator::ir_array_dimensions(ast_node * node)
     ast_node * idNode = node->sons[0];
     std::string arrayName = idNode->name;
     int64_t lineno = idNode->line_no;
-    std::cerr << "Array name: " << arrayName << std::endl;
     // 收集维度信息
     std::vector<int> dimensions;
     for (size_t i = 1; i < node->sons.size(); i++) {
@@ -1308,7 +1296,6 @@ bool IRGenerator::ir_array_access(ast_node * node)
     LocalVariable * tempPtr = static_cast<LocalVariable *>(module->newVarValue(elementPtrType));
 
     node->blockInsts.addInst(new MoveInstruction(currentFunc, tempPtr, elementAddr));
-    std::cerr << node->isLValue << std::endl;
     if (!node->isLValue) {
         // 作为右值访问（读操作） - 创建加载指令
         LocalVariable * tempValue = static_cast<LocalVariable *>(module->newVarValue(arrayType->getElementType()));

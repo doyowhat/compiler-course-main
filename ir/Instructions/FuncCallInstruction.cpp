@@ -69,8 +69,17 @@ void FuncCallInstruction::toString(std::string & str)
         for (int32_t k = 0; k < operandsNum; ++k) {
 
             auto operand = getOperand(k);
-
-            str += operand->getType()->toString() + " " + operand->getIRName();
+            if (operand->getType()->isArrayType()) {
+                std::string sstr = operand->getType()->toString(), strType, strDim;
+                //截取第一个[后面的字符串
+                size_t pos = sstr.find('[');
+                if (pos != std::string::npos) {
+                    strType = sstr.substr(0, pos);
+                    strDim = sstr.substr(pos);
+                }
+                str += strType + " " + operand->getIRName() + strDim;
+            } else
+                str += operand->getType()->toString() + " " + operand->getIRName();
 
             if (k != (operandsNum - 1)) {
                 str += ", ";
