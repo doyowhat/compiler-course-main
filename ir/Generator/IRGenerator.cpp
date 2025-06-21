@@ -100,6 +100,9 @@ IRGenerator::IRGenerator(ast_node * _root, Module * _module) : root(_root), modu
     ast2ir_handlers[ast_operator_type::AST_OP_ARRAY_DIMENSIONS] = &IRGenerator::ir_array_dimensions;
     ast2ir_handlers[ast_operator_type::AST_OP_ARRAY_ACCESS] = &IRGenerator::ir_array_access;
     ast2ir_handlers[ast_operator_type::AST_OP_UNSPECIFIED_DIM] = &IRGenerator::ir_unspecified_dim;
+
+    /*健壮性*/
+    ast2ir_handlers[ast_operator_type::AST_OP_NOP] = &IRGenerator::ir_nop;
 }
 
 /// @brief 遍历抽象语法树产生线性IR，保存到IRCode中
@@ -1318,5 +1321,10 @@ bool IRGenerator::ir_unspecified_dim(ast_node * node)
     // 我们创建一个值为0的常量整数表示未指定维度
     Value * zeroValue = module->newConstInt(0);
     node->val = zeroValue;
+    return true;
+}
+
+bool IRGenerator::ir_nop(ast_node * node)
+{
     return true;
 }

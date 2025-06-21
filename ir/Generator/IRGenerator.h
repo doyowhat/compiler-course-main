@@ -159,6 +159,8 @@ protected:
     /// @return 翻译是否成功，true：成功，false：失败
     bool ir_default(ast_node * node);
 
+    bool ir_nop(ast_node * node);
+
     /// @brief 根据AST的节点运算符查找对应的翻译函数并执行翻译动作
     /// @param node AST节点
     /// @return 成功返回node节点，否则返回nullptr

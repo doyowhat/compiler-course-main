@@ -120,7 +120,9 @@ enum class ast_operator_type : int {
 
     AST_OP_ARRAY_DIMENSIONS, // 数组维度列表
     AST_OP_UNSPECIFIED_DIM,  // 未指定的数组维度
-    AST_OP_ARRAY_ACCESS      //数组访问运算符
+    AST_OP_ARRAY_ACCESS,     //数组访问运算符
+
+    AST_OP_NOP
 };
 
 ///

@@ -772,8 +772,8 @@ std::any MiniCCSTVisitor::visitExpressionStatement(MiniCParser::ExpressionStatem
         return visitExpr(ctx->expr());
     } else {
         // 空语句
-
+        // std::cerr << "空语句块" << std::endl;
         // 直接返回空指针，需要再把语句加入到语句块时要注意判断，空语句不要加入
-        return nullptr;
+        return ast_node::New(ast_operator_type::AST_OP_NOP, nullptr);
     }
 }
