@@ -100,6 +100,10 @@ IRGenerator::IRGenerator(ast_node * _root, Module * _module) : root(_root), modu
     ast2ir_handlers[ast_operator_type::AST_OP_ARRAY_DIMENSIONS] = &IRGenerator::ir_array_dimensions;
     ast2ir_handlers[ast_operator_type::AST_OP_ARRAY_ACCESS] = &IRGenerator::ir_array_access;
     ast2ir_handlers[ast_operator_type::AST_OP_UNSPECIFIED_DIM] = &IRGenerator::ir_unspecified_dim;
+
+    /*健壮性*/
+    ast2ir_handlers[ast_operator_type::AST_OP_NOP] = &IRGenerator::ir_nop;
+  
 }
 
 /// @brief 遍历抽象语法树产生线性IR，保存到IRCode中
@@ -286,32 +290,59 @@ bool IRGenerator::ir_function_formal_params(ast_node * node)
     Function * currentFunc = module->getCurrentFunction();
     if (!currentFunc)
         return false;
-    // 每个形参变量都创建对应的临时变量，用于表达实参转递的值
-    // 而真实的形参则创建函数内的局部变量。
-    // 然后产生赋值指令，用于把表达实参值的临时变量拷贝到形参局部变量上。
-    // 请注意这些指令要放在Entry指令后面，因此处理的先后上要注意。
-
-    // 为每个形参创建两个值：
-    // 1. 实参值临时变量（用于接收调用者传递的值）
-    // 2. 形参局部变量（函数内实际使用的变量）
 
     for (auto & paramNode: node->sons) {
+        // 获取参数类型和名称
         ast_node * typeNode = paramNode->sons[0];
         ast_node * nameNode = paramNode->sons[1];
         std::string paramName = nameNode->name;
         Type * paramType = typeNode->type;
+        // 检查是否是数组参数 (有第三个儿子)
+        if (paramNode->sons.size() > 2) {
+            ast_node * dimensionsNode = paramNode->sons[2];
 
-        if (paramType && paramType->isArrayType()) {
-            ArrayType * arrayType = static_cast<ArrayType *>(paramType);
+            if (dimensionsNode->node_type != ast_operator_type::AST_OP_ARRAY_DIMENSIONS) {
+                minic_log(LOG_ERROR, "参数'%s'的维度信息无效", paramName.c_str());
+                return false;
+            }
+            // 收集维度信息
+            std::vector<int> dimensions;
+            for (auto dim: dimensionsNode->sons) {
+                if (dim->node_type == ast_operator_type::AST_OP_UNSPECIFIED_DIM) {
+                    // 未指定维度，设为0
+                    dimensions.push_back(0);
+                } else {
+                    // 处理维度表达式
+                    ast_node * result = ir_visit_ast_node(dim);
+                    if (!result || !result->val) {
+                        minic_log(LOG_ERROR, "数组维度表达式无效 for param '%s'", paramName.c_str());
+                        return false;
+                    }
 
-            // 对于形式参数，数组的第一个维度设置为0
-            std::vector<int> dims = arrayType->getDimensions();
-            if (!dims.empty())
-                dims[0] = 0;
+                    // 维度必须是常量整数
+                    if (result->val->getType()->isIntegerType()) {
+                        ConstInt * constInt = dynamic_cast<ConstInt *>(result->val);
+                        if (constInt) {
+                            dimensions.push_back(constInt->getVal());
+                        } else {
+                            minic_log(LOG_ERROR, "数组维度必须是常量整数 for param '%s'", paramName.c_str());
+                            return false;
+                        }
+                    } else {
+                        minic_log(LOG_ERROR, "数组维度必须是整数 for param '%s'", paramName.c_str());
+                        return false;
+                    }
+                }
+            }
 
-            // 创建调整后的数组类型
-            ArrayType * adjustedType = new ArrayType(arrayType->getElementType(), dims);
-            paramType = adjustedType;
+            // 创建数组类型
+            ArrayType * arrayType = new ArrayType(paramType, dimensions);
+            paramType = arrayType;
+
+            // 对于形式参数，数组的第一个维度设置为0（不指定大小）
+            if (!dimensions.empty()) {
+                dimensions[0] = 0;
+            }
         }
         // 将形参添加到函数的形参列表
         FormalParam * formalParam = new FormalParam(paramType, paramName);
@@ -319,13 +350,11 @@ bool IRGenerator::ir_function_formal_params(ast_node * node)
 
         // 创建形参局部变量
         LocalVariable * localVar = static_cast<LocalVariable *>(module->newVarValue(paramType, paramName));
-        node->val = localVar;
-
+        paramNode->val = localVar;
         // 生成赋值指令：实参临时变量 -> 形参局部变量
         MoveInstruction * moveInst = new MoveInstruction(currentFunc, localVar, formalParam);
         currentFunc->getInterCode().addInst(moveInst);
     }
-
     return true;
 }
 
@@ -1112,7 +1141,6 @@ bool IRGenerator::ir_variable_declare(ast_node * node)
 /// @return 翻译是否成功，true：成功，false：失败
 bool IRGenerator::ir_array_dimensions(ast_node * node)
 {
-    std::cerr << "开始处理数组声明节点" << std::endl;
     // Function * currentFunc = module->getCurrentFunction();
     //  if (!currentFunc)
     //      return false;
@@ -1123,12 +1151,10 @@ bool IRGenerator::ir_array_dimensions(ast_node * node)
 
     // 获取基本类型（现在只支持int）
     Type * baseType = IntegerType::getTypeInt();
-    std::cerr << "获取基本类型" << std::endl;
     // 获取数组名称
     ast_node * idNode = node->sons[0];
     std::string arrayName = idNode->name;
     int64_t lineno = idNode->line_no;
-    std::cerr << "Array name: " << arrayName << std::endl;
     // 收集维度信息
     std::vector<int> dimensions;
     for (size_t i = 1; i < node->sons.size(); i++) {
@@ -1149,7 +1175,6 @@ bool IRGenerator::ir_array_dimensions(ast_node * node)
         dimensions.push_back(static_cast<ConstInt *>(result->val)->getVal());
         node->blockInsts.addInst(result->blockInsts);
     }
-    std::cerr << "维度信息收集完成，维度数量: " << dimensions.size() << std::endl;
     // 创建数组类型
     ArrayType * arrayType = new ArrayType(baseType, dimensions);
 
@@ -1159,7 +1184,6 @@ bool IRGenerator::ir_array_dimensions(ast_node * node)
 
     // 标记节点值为数组变量
     node->val = arrayVar;
-    std::cerr << "创建数组成功，数组名称: " << arrayName << std::endl;
     return true;
 }
 
@@ -1274,11 +1298,9 @@ bool IRGenerator::ir_array_access(ast_node * node)
     LocalVariable * tempPtr = static_cast<LocalVariable *>(module->newVarValue(elementPtrType));
 
     node->blockInsts.addInst(new MoveInstruction(currentFunc, tempPtr, elementAddr));
-    std::cerr << node->isLValue << std::endl;
     if (!node->isLValue) {
         // 作为右值访问（读操作） - 创建加载指令
         LocalVariable * tempValue = static_cast<LocalVariable *>(module->newVarValue(arrayType->getElementType()));
-        std::cerr << "创建临时变量用于存储加载的值" << std::endl;
         LoadInstruction * loadInst = new LoadInstruction(currentFunc, tempValue, tempPtr);
         node->blockInsts.addInst(loadInst);
         node->val = tempValue;
@@ -1298,5 +1320,10 @@ bool IRGenerator::ir_unspecified_dim(ast_node * node)
     // 我们创建一个值为0的常量整数表示未指定维度
     Value * zeroValue = module->newConstInt(0);
     node->val = zeroValue;
+    return true;
+}
+
+bool IRGenerator::ir_nop(ast_node * node)
+{
     return true;
 }
