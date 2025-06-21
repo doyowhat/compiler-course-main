@@ -28,9 +28,9 @@ class Function;
 ///
 class MoveInstruction : public Instruction {
 
-private:
-    bool srcIsReference = false;
-    bool dstIsReference = false;
+    // private:
+    //     bool srcIsReference = false;
+    //     bool dstIsReference = false;
 
 public:
     ///
@@ -44,12 +44,12 @@ public:
     /// @brief 转换成字符串
     void toString(std::string & str) override;
 
-    void setSrcIsReference(bool isRef)
-    {
-        srcIsReference = isRef;
-    }
-    void setDstIsReference(bool isRef)
-    {
-        dstIsReference = isRef;
-    }
+    // void setSrcIsReference(bool isRef)
+    // {
+    //     srcIsReference = isRef;
+    // }
+    // void setDstIsReference(bool isRef)
+    // {
+    //     dstIsReference = isRef;
+    // }
 };

@@ -176,6 +176,10 @@ set(IR_SRCS
 	ir/Instructions/MoveInstruction.h
 	ir/Instructions/UnaryInstruction.cpp
 	ir/Instructions/UnaryInstruction.h
+	ir/Instructions/LoadInstruction.cpp
+	ir/Instructions/LoadInstruction.h
+	ir/Instructions/StoreInstruction.cpp
+	ir/Instructions/StoreInstruction.h
 	ir/Types/ArrayType.h
 	ir/Types/ArrayType.cpp
 	ir/Types/VoidType.h

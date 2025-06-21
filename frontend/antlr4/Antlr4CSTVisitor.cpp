@@ -257,7 +257,7 @@ std::any MiniCCSTVisitor::visitAssignStatement(MiniCParser::AssignStatementConte
 
     // 赋值左侧左值Lval遍历产生节点
     auto lvalNode = std::any_cast<ast_node *>(visitLVal(ctx->lVal()));
-
+    lvalNode->setIsLValue(true); // 设置为左值
     // 赋值右侧expr遍历
     auto exprNode = std::any_cast<ast_node *>(visitExpr(ctx->expr()));
 
@@ -660,7 +660,6 @@ std::any MiniCCSTVisitor::visitLVal(MiniCParser::LValContext * ctx)
         auto index = std::any_cast<ast_node *>(visitArrayDim(dim));
         access->insert_son_node(index);
     }
-
     return access;
 }
 

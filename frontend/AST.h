@@ -139,6 +139,7 @@ public:
     /// @brief 行号信息，主要针对叶子节点有用
     int64_t line_no;
 
+    bool isLValue = false;
     /// @brief 节点值的类型，可用于函数返回值类型
     Type * type;
 
@@ -194,6 +195,7 @@ public:
     /// @return true：是叶子节点 false：内部节点
     bool isLeafNode();
 
+    void setIsLValue(bool is_lvalue);
     /// @brief 向父节点插入一个节点
     /// @param parent 父节点
     /// @param node 节点

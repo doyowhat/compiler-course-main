@@ -3,6 +3,7 @@
 #include "Type.h"
 #include <vector>
 #include <string>
+#include <iostream>
 
 /// @brief 数组类型类
 ///
@@ -22,6 +23,14 @@ class ArrayType : public Type {
 
 public:
     ///
+    /// @brief 创建数组类型
+    /// @param elementType 元素类型
+    /// @param dimensions 维度数组
+    ///
+    ArrayType(Type * _elementType, const std::vector<int> & _dimensions)
+        : Type(ArrayTyID), elementType(_elementType), dimensions(_dimensions)
+    {}
+    ///
     /// @brief 获取数组类型的字符串表示
     /// @return std::string
     ///
@@ -37,7 +46,6 @@ public:
         for (int dim: dimensions) {
             typeStr += "[" + std::to_string(dim) + "]";
         }
-
         return typeStr;
     }
 
@@ -98,15 +106,6 @@ public:
         }
         return count;
     }
-
-    ///
-    /// @brief 创建数组类型
-    /// @param elementType 元素类型
-    /// @param dimensions 维度数组
-    ///
-    ArrayType(Type * _elementType, const std::vector<int> & _dimensions)
-        : Type(ArrayTyID), elementType(_elementType), dimensions(_dimensions)
-    {}
 
 private:
     /// @brief 元素类型

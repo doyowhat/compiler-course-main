@@ -84,6 +84,11 @@ bool ast_node::isLeafNode()
     return is_leaf;
 }
 
+void ast_node::setIsLValue(bool is_lvalue)
+{
+    this->isLValue = is_lvalue;
+}
+
 /// @brief 创建指定节点类型的节点，请注意在指定有效的孩子后必须追加一个空指针nullptr，表明可变参数结束
 /// @param type 节点类型
 /// @param son_num 孩子节点的个数

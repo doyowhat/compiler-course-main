@@ -85,7 +85,12 @@ enum class IRInstOperator : std::int8_t {
     IRINST_OP_GE_I,
 
     /// @brief 最大指令码，也是无效指令
-    IRINST_OP_MAX
+    IRINST_OP_MAX,
+
+    /// Load指令，用于从内存中加载数据到寄存器
+    IRINST_OP_LOAD,
+    /// Store指令，用于将寄存器中的数据存储到内存
+    IRINST_OP_STORE
 };
 
 ///

@@ -22,6 +22,7 @@
 #include <iostream>
 
 #include "ArrayType.h"
+#include "PointerType.h"
 #include "AST.h"
 #include "Common.h"
 #include "Function.h"
@@ -37,6 +38,8 @@
 #include "MoveInstruction.h"
 #include "GotoInstruction.h"
 #include "UnaryInstruction.h"
+#include "LoadInstruction.h"
+#include "StoreInstruction.h"
 
 /// @brief 构造函数
 /// @param _root AST的根
@@ -914,49 +917,44 @@ bool IRGenerator::ir_neg(ast_node * node)
 /// @brief 赋值AST节点翻译成线性中间IR
 /// @param node AST节点
 /// @return 翻译是否成功，true：成功，false：失败
+
 bool IRGenerator::ir_assign(ast_node * node)
 {
     ast_node * son1_node = node->sons[0];
     ast_node * son2_node = node->sons[1];
 
-    // 赋值节点，自右往左运算
-
-    // 赋值运算符的左侧操作数
+    // 标记左值节点为左值
+    son1_node->isLValue = true;
+    // 处理左侧操作数
     ast_node * left = ir_visit_ast_node(son1_node);
     if (!left) {
-        // 某个变量没有定值
-        // 这里缺省设置变量不存在则创建，因此这里不会错误
         return false;
     }
 
-    // 赋值运算符的右侧操作数
+    // 处理右侧操作数
     ast_node * right = ir_visit_ast_node(son2_node);
     if (!right) {
-        // 某个变量没有定值
         return false;
     }
 
-    // 这里只处理整型的数据，如需支持实数，则需要针对类型进行处理
-    MoveInstruction * movInst = new MoveInstruction(module->getCurrentFunction(),
-                                                    left->val,   // 目标地址
-                                                    right->val); // 源值
-
-    // 如果左侧是数组访问（需要解引用）
-    if (son1_node->node_type == ast_operator_type::AST_OP_ARRAY_ACCESS) {
-        movInst->setDstIsReference(true); // 目标操作数需要解引用 (*addr = value)
-    }
-
-    // 创建临时变量保存IR的值，以及线性IR指令
     node->blockInsts.addInst(right->blockInsts);
     node->blockInsts.addInst(left->blockInsts);
-    node->blockInsts.addInst(movInst);
 
-    // 这里假定赋值的类型是一致的
-    node->val = movInst;
+    // 如果左侧是地址（指针类型），使用存储指令
+    if (left->val->getType()->isPointerType()) {
+        StoreInstruction * storeInst = new StoreInstruction(module->getCurrentFunction(), left->val, right->val);
+        node->blockInsts.addInst(storeInst);
+        node->val = storeInst;
+    }
+    // 否则使用移动指令
+    else {
+        MoveInstruction * movInst = new MoveInstruction(module->getCurrentFunction(), left->val, right->val);
+        node->blockInsts.addInst(movInst);
+        node->val = movInst;
+    }
 
     return true;
 }
-
 /// @brief return节点翻译成线性中间IR
 /// @param node AST节点
 /// @return 翻译是否成功，true：成功，false：失败
@@ -1218,36 +1216,34 @@ bool IRGenerator::ir_array_access(ast_node * node)
     }
 
     // 计算数组偏移量
-    Value * totalOffset = nullptr;
     Value * baseAddr = arrayNode->val;
 
     // 计算偏移量: offset = (i0 * d1 + i1) * d2 + i2 + ...
-    for (int i = 0; i < dimCount; i++) {
-        // 计算当前维度的偏移
-        if (totalOffset) {
-            // 乘以后续维度的大小
-            Value * dimSize = new ConstInt(dims[i]);
-            BinaryInstruction * mul = new BinaryInstruction(currentFunc,
-                                                            IRInstOperator::IRINST_OP_MUL_I,
-                                                            totalOffset,
-                                                            dimSize,
-                                                            IntegerType::getTypeInt());
-            node->blockInsts.addInst(mul);
-            totalOffset = mul;
+    Value * totalOffset = indices[0];
+    for (int i = 1; i < dimCount; i++) {
+        // 乘以后续维度大小
+        int size = 1;
+        for (int j = i; j < dimCount; j++) {
+            size *= dims[j];
         }
+        Value * dimSize = new ConstInt(size);
+
+        BinaryInstruction * mul = new BinaryInstruction(currentFunc,
+                                                        IRInstOperator::IRINST_OP_MUL_I,
+                                                        totalOffset,
+                                                        dimSize,
+                                                        IntegerType::getTypeInt());
+        node->blockInsts.addInst(mul);
+        totalOffset = mul;
 
         // 加上当前索引
-        if (totalOffset) {
-            BinaryInstruction * add = new BinaryInstruction(currentFunc,
-                                                            IRInstOperator::IRINST_OP_ADD_I,
-                                                            totalOffset,
-                                                            indices[i],
-                                                            IntegerType::getTypeInt());
-            node->blockInsts.addInst(add);
-            totalOffset = add;
-        } else {
-            totalOffset = indices[i];
-        }
+        BinaryInstruction * add = new BinaryInstruction(currentFunc,
+                                                        IRInstOperator::IRINST_OP_ADD_I,
+                                                        totalOffset,
+                                                        indices[i],
+                                                        IntegerType::getTypeInt());
+        node->blockInsts.addInst(add);
+        totalOffset = add;
     }
 
     // 乘以元素大小 (通常为4字节)
@@ -1264,24 +1260,32 @@ bool IRGenerator::ir_array_access(ast_node * node)
                                                             IRInstOperator::IRINST_OP_ADD_I,
                                                             baseAddr,
                                                             byteOffset,
-                                                            IntegerType::getTypeInt());
+                                                            new PointerType(arrayType->getElementType()));
     node->blockInsts.addInst(elementAddr);
 
-    // 计算元素地址: addr = baseAddr + byteOffset
-    // 直接使用二元指令结果作为地址（不单独存储）
+    PointerType * elementPtrType = new PointerType(arrayType->getElementType());
+
+    // 将整型地址转换为指针类型（如果有需要，可以通过BitCast指令转换，这里简化处理）
+    // 在实际系统中，你可能需要创建一个新的Value来包装这个指针类型
     node->val = elementAddr;
+    // node->val->setType(elementPtrType); // 假设可以设置类型
 
-    // 创建临时变量存储加载的值
-    LocalVariable * tempValue = static_cast<LocalVariable *>(module->newVarValue(arrayType->getElementType()));
+    // 创建临时变量存储指针
+    LocalVariable * tempPtr = static_cast<LocalVariable *>(module->newVarValue(elementPtrType));
 
-    // 创建加载指令：tempValue = *elementAddr;
-    MoveInstruction * loadInst = new MoveInstruction(currentFunc, tempValue, elementAddr);
-    loadInst->setSrcIsReference(true); // 源操作数需要解引用
-    node->blockInsts.addInst(loadInst);
-
-    // 设置节点值为加载的值
-    node->val = tempValue;
-
+    node->blockInsts.addInst(new MoveInstruction(currentFunc, tempPtr, elementAddr));
+    std::cerr << node->isLValue << std::endl;
+    if (!node->isLValue) {
+        // 作为右值访问（读操作） - 创建加载指令
+        LocalVariable * tempValue = static_cast<LocalVariable *>(module->newVarValue(arrayType->getElementType()));
+        std::cerr << "创建临时变量用于存储加载的值" << std::endl;
+        LoadInstruction * loadInst = new LoadInstruction(currentFunc, tempValue, tempPtr);
+        node->blockInsts.addInst(loadInst);
+        node->val = tempValue;
+    } else {
+        // 作为左值访问（写操作） - 直接返回指针
+        node->val = tempPtr;
+    }
     return true;
 }
 
