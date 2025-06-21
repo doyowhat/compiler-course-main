@@ -91,7 +91,7 @@ public:
     ///
     void toDeclareString(std::string & str)
     {
-        if (getType()->toString().find('[') != std::string::npos) {
+        if (getType()->isArrayType()) {
             std::string sstr = getType()->toString(), strType, strDim;
             //截取第一个[后面的字符串
             size_t pos = sstr.find('[');
