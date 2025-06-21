@@ -103,6 +103,7 @@ IRGenerator::IRGenerator(ast_node * _root, Module * _module) : root(_root), modu
 
     /*健壮性*/
     ast2ir_handlers[ast_operator_type::AST_OP_NOP] = &IRGenerator::ir_nop;
+  
 }
 
 /// @brief 遍历抽象语法树产生线性IR，保存到IRCode中
@@ -296,7 +297,6 @@ bool IRGenerator::ir_function_formal_params(ast_node * node)
         ast_node * nameNode = paramNode->sons[1];
         std::string paramName = nameNode->name;
         Type * paramType = typeNode->type;
-
         // 检查是否是数组参数 (有第三个儿子)
         if (paramNode->sons.size() > 2) {
             ast_node * dimensionsNode = paramNode->sons[2];
@@ -344,7 +344,6 @@ bool IRGenerator::ir_function_formal_params(ast_node * node)
                 dimensions[0] = 0;
             }
         }
-
         // 将形参添加到函数的形参列表
         FormalParam * formalParam = new FormalParam(paramType, paramName);
         currentFunc->addParam(formalParam);
